@@ -1,1 +1,2659 @@
 
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Đồng Lãng - Trò Chơi Ma Hùa</title>
+<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+<style>
+/* ═══════════════════════════════════════════════════════════════
+   THEME: Dark moonlit werewolf aesthetic
+   ═══════════════════════════════════════════════════════════════ */
+:root {
+  --bg-deep: #0a0a12;
+  --bg-card: #14141f;
+  --bg-card-hover: #1c1c2a;
+  --bg-input: #1a1a28;
+  --border: #2a2a3e;
+  --border-glow: #4a4a6e;
+  --text-primary: #e8e0d8;
+  --text-secondary: #9a92a0;
+  --text-muted: #6a6272;
+  --accent: #c4a45a;
+  --accent-glow: rgba(196, 164, 90, 0.3);
+  --wolf: #8b2500;
+  --wolf-glow: rgba(139, 37, 0, 0.4);
+  --villager: #3a6b3a;
+  --vampire: #6b206b;
+  --neutral: #5a5a7a;
+  --danger: #c43a3a;
+  --success: #3a9a3a;
+  --info: #3a6ba0;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --shadow: 0 4px 24px rgba(0,0,0,0.4);
+  --font: 'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  background: var(--bg-deep);
+  color: var(--text-primary);
+  font-family: var(--font);
+  font-size: 16px;
+  line-height: 1.5;
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#app {
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  position: relative;
+}
+
+/* Scrollbar */
+#app::-webkit-scrollbar { width: 4px; }
+#app::-webkit-scrollbar-track { background: transparent; }
+#app::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+/* ═══════════════════════════════════════════════════════════════
+   SCREENS (hidden by default, shown when active)
+   ═══════════════════════════════════════════════════════════════ */
+.screen {
+  display: none;
+  padding: 16px;
+  animation: fadeIn 0.3s ease;
+}
+.screen.active { display: block; }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+@keyframes moonGlow {
+  0%, 100% { box-shadow: 0 0 20px var(--accent-glow); }
+  50% { box-shadow: 0 0 40px var(--accent-glow), 0 0 60px rgba(196,164,90,0.15); }
+}
+
+@keyframes wolfEye {
+  0%, 100% { transform: scaleY(1); }
+  50% { transform: scaleY(0.8); }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   TYPOGRAPHY
+   ═══════════════════════════════════════════════════════════════ */
+h1 {
+  font-size: 1.6rem;
+  font-weight: 700;
+  text-align: center;
+  margin-bottom: 8px;
+  letter-spacing: 2px;
+  background: linear-gradient(135deg, var(--accent), #e8d48b);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+h2 {
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: var(--accent);
+  text-align: center;
+}
+
+h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: var(--text-primary);
+}
+
+.subtitle {
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  margin-bottom: 20px;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   BUTTONS
+   ═══════════════════════════════════════════════════════════════ */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 24px;
+  border: none;
+  border-radius: var(--radius);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: var(--font);
+  width: 100%;
+  touch-action: manipulation;
+}
+
+.btn:active { transform: scale(0.97); }
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--accent), #d4b060);
+  color: #1a1a12;
+  box-shadow: 0 2px 16px var(--accent-glow);
+}
+.btn-primary:hover { box-shadow: 0 4px 24px var(--accent-glow); }
+
+.btn-secondary {
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+}
+.btn-secondary:hover { background: var(--bg-card-hover); border-color: var(--border-glow); }
+
+.btn-danger {
+  background: var(--danger);
+  color: white;
+}
+.btn-danger:hover { opacity: 0.9; }
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  padding: 8px 16px;
+}
+.btn-ghost:hover { color: var(--text-primary); border-color: var(--border-glow); }
+
+.btn-sm {
+  padding: 8px 16px;
+  font-size: 0.85rem;
+  width: auto;
+}
+
+.btn-lg {
+  padding: 16px 32px;
+  font-size: 1.1rem;
+}
+
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   CARDS
+   ═══════════════════════════════════════════════════════════════ */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 12px;
+  transition: all 0.2s ease;
+}
+
+.card:hover {
+  border-color: var(--border-glow);
+  background: var(--bg-card-hover);
+}
+
+.card-accent {
+  border-color: var(--accent);
+  box-shadow: 0 0 16px var(--accent-glow);
+}
+
+.card-wolf {
+  border-color: var(--wolf);
+  box-shadow: 0 0 12px var(--wolf-glow);
+}
+
+.card-villager {
+  border-color: var(--villager);
+}
+
+.card-vampire {
+  border-color: var(--vampire);
+}
+
+.card-neutral {
+  border-color: var(--neutral);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   INPUTS
+   ═══════════════════════════════════════════════════════════════ */
+.input-group {
+  margin-bottom: 12px;
+}
+
+.input-group label {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+  font-weight: 500;
+}
+
+.input {
+  width: 100%;
+  padding: 12px 14px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 1rem;
+  font-family: var(--font);
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-glow);
+}
+
+.input::placeholder { color: var(--text-muted); }
+
+/* ═══════════════════════════════════════════════════════════════
+   ROLE CARD (for role selection catalog)
+   ═══════════════════════════════════════════════════════════════ */
+.role-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.role-card:active { transform: scale(0.98); }
+
+.role-card.selected {
+  border-color: var(--accent);
+  background: rgba(196, 164, 90, 0.08);
+  box-shadow: 0 0 12px var(--accent-glow);
+}
+
+.role-card.wolf { border-left: 3px solid var(--wolf); }
+.role-card.villager { border-left: 3px solid var(--villager); }
+.role-card.vampire { border-left: 3px solid var(--vampire); }
+.role-card.neutral { border-left: 3px solid var(--neutral); }
+
+.role-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+  flex-shrink: 0;
+}
+
+.role-icon.wolf { background: var(--wolf-glow); color: var(--wolf); }
+.role-icon.villager { background: rgba(58,107,58,0.2); color: var(--villager); }
+.role-icon.vampire { background: rgba(107,32,107,0.2); color: var(--vampire); }
+.role-icon.neutral { background: rgba(90,90,122,0.2); color: var(--neutral); }
+
+.role-info { flex: 1; min-width: 0; }
+
+.role-name {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--text-primary);
+}
+
+.role-desc {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-top: 2px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.role-tag {
+  font-size: 0.7rem;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.role-tag.wolf { background: var(--wolf-glow); color: var(--wolf); }
+.role-tag.villager { background: rgba(58,107,58,0.2); color: var(--villager); }
+.role-tag.vampire { background: rgba(107,32,107,0.2); color: var(--vampire); }
+.role-tag.neutral { background: rgba(90,90,122,0.2); color: var(--neutral); }
+
+/* ═══════════════════════════════════════════════════════════════
+   PLAYER LIST
+   ═══════════════════════════════════════════════════════════════ */
+.player-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  margin-bottom: 6px;
+  transition: all 0.2s;
+}
+
+.player-item.eliminated {
+  opacity: 0.4;
+  text-decoration: line-through;
+}
+
+.player-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.85rem;
+  flex-shrink: 0;
+  background: var(--bg-input);
+  color: var(--text-secondary);
+}
+
+.player-avatar.host { background: rgba(196,164,90,0.2); color: var(--accent); }
+
+.player-name {
+  flex: 1;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.player-role {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.player-status {
+  font-size: 0.7rem;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+.player-status.agreed { background: rgba(58,154,58,0.2); color: var(--success); }
+.player-status.not_agreed { background: rgba(196,58,58,0.2); color: var(--danger); }
+.player-status.eliminated { background: rgba(196,58,58,0.2); color: var(--danger); }
+
+/* ═══════════════════════════════════════════════════════════════
+   TABS
+   ═══════════════════════════════════════════════════════════════ */
+.tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.tab {
+  flex: 1;
+  padding: 10px;
+  text-align: center;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  border-bottom: 2px solid transparent;
+  font-family: var(--font);
+  touch-action: manipulation;
+}
+
+.tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.tab:hover { color: var(--text-secondary); }
+
+/* ═══════════════════════════════════════════════════════════════
+   VOTING
+   ═══════════════════════════════════════════════════════════════ */
+.vote-grid {
+  display: grid;
+  gap: 8px;
+}
+
+.vote-btn {
+  padding: 10px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font);
+  touch-action: manipulation;
+}
+
+.vote-btn:active { transform: scale(0.98); }
+.vote-btn.selected { border-color: var(--accent); background: rgba(196,164,90,0.1); }
+.vote-btn.eliminated { opacity: 0.4; pointer-events: none; }
+
+.vote-btn .v-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.75rem;
+  background: var(--bg-input);
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   TIMER
+   ═══════════════════════════════════════════════════════════════ */
+.timer-bar {
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+.timer-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--danger), var(--accent));
+  border-radius: 2px;
+  transition: width 1s linear;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   NOTIFICATION TOAST
+   ═══════════════════════════════════════════════════════════════ */
+.toast-container {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+  width: calc(100% - 32px);
+  pointer-events: none;
+}
+
+.toast {
+  padding: 10px 20px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  text-align: center;
+  animation: toastIn 0.3s ease, toastOut 0.3s ease 2.5s forwards;
+  pointer-events: auto;
+  max-width: 100%;
+}
+
+.toast.error { border-color: var(--danger); }
+.toast.success { border-color: var(--success); }
+.toast.info { border-color: var(--info); }
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translateY(-20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes toastOut {
+  from { opacity: 1; transform: translateY(0); }
+  to { opacity: 0; transform: translateY(-20px); }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   LOADING / SECTION DIVIDERS
+   ═══════════════════════════════════════════════════════════════ */
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin: 20px auto;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.divider::before, .divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ROLE REVEAL SCREEN
+   ═══════════════════════════════════════════════════════════════ */
+.role-reveal-card {
+  text-align: center;
+  padding: 24px;
+  margin: 16px 0;
+}
+
+.role-reveal-icon {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.4rem;
+  margin: 0 auto 16px;
+  animation: float 3s ease-in-out infinite;
+}
+
+.role-reveal-icon.wolf { background: var(--wolf-glow); color: var(--wolf); }
+.role-reveal-icon.villager { background: rgba(58,107,58,0.3); color: var(--villager); }
+.role-reveal-icon.vampire { background: rgba(107,32,107,0.3); color: var(--vampire); }
+.role-reveal-icon.neutral { background: rgba(90,90,122,0.3); color: var(--neutral); }
+
+.role-reveal-name {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 8px;
+}
+
+.role-reveal-team {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin-bottom: 12px;
+}
+
+.role-reveal-desc {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  margin-bottom: 16px;
+  line-height: 1.6;
+}
+
+.role-reveal-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.role-reveal-meta span {
+  font-size: 0.75rem;
+  padding: 4px 10px;
+  border-radius: 4px;
+  background: var(--bg-input);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   NIGHT ACTION
+   ═══════════════════════════════════════════════════════════════ */
+.night-action-box {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin: 12px 0;
+}
+
+.night-action-box.wolf { border-color: var(--wolf); }
+
+.action-title {
+  font-weight: 600;
+  color: var(--accent);
+  margin-bottom: 8px;
+  font-size: 1rem;
+}
+
+.action-desc {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  margin-bottom: 12px;
+}
+
+.target-grid {
+  display: grid;
+  gap: 6px;
+}
+
+.target-btn {
+  padding: 8px 12px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: var(--font);
+  touch-action: manipulation;
+}
+
+.target-btn:active { transform: scale(0.97); }
+.target-btn.selected { border-color: var(--accent); background: rgba(196,164,90,0.1); }
+.target-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ═══════════════════════════════════════════════════════════════
+   GAME OVER
+   ═══════════════════════════════════════════════════════════════ */
+.gameover-box {
+  text-align: center;
+  padding: 24px;
+  margin: 16px 0;
+}
+
+.gameover-icon {
+  font-size: 3rem;
+  margin-bottom: 12px;
+}
+
+.gameover-title {
+  font-size: 1.3rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.gameover-title.villager-win { color: var(--success); }
+.gameover-title.wolf-win { color: var(--wolf); }
+.gameover-title.vampire-win { color: var(--vampire); }
+
+.gameover-detail {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  margin-bottom: 16px;
+  line-height: 1.6;
+}
+
+.eliminated-list {
+  text-align: left;
+  margin: 12px 0;
+}
+
+.eliminated-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.eliminated-item .skull { color: var(--danger); }
+
+/* ═══════════════════════════════════════════════════════════════
+   RESPONSIVE / MOBILE FIXES
+   ═══════════════════════════════════════════════════════════════ */
+@media (max-width: 480px) {
+  .screen { padding: 12px; }
+  h1 { font-size: 1.3rem; }
+  h2 { font-size: 1rem; }
+  .btn { padding: 10px 18px; font-size: 0.95rem; }
+  .role-card { padding: 10px; }
+  .card { padding: 12px; }
+}
+
+/* Safe area for notched phones */
+@supports (padding: env(safe-area-inset-bottom)) {
+  .screen { padding-bottom: env(safe-area-inset-bottom); }
+}
+
+/* Prevent pull-to-refresh during game */
+body.no-scroll { overflow: hidden; }
+
+/* Whiskey glass divider for visual flair */
+.whiskey-line {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  margin: 16px 0;
+  opacity: 0.3;
+}
+</style>
+</head>
+<body>
+
+<div id="app">
+
+<!-- ═══════════════════════════════════════════════════════════════
+     TOAST CONTAINER
+     ═══════════════════════════════════════════════════════════════ -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     SCREEN 1: HOME / LOGIN
+     ═══════════════════════════════════════════════════════════════ -->
+<div class="screen active" id="screen_home">
+  <div style="text-align:center; padding: 30px 0 20px;">
+    <div style="font-size:3rem; margin-bottom:8px; animation: float 4s ease-in-out infinite;">🌙</div>
+    <h1>ĐỒNG LÃNG</h1>
+    <p class="subtitle">Trò chơi ma húa đêm ArgumentNullException — đội nhóm, suy luận, và sự dối trá</p>
+    <div class="whiskey-line"></div>
+  </div>
+
+  <div class="card">
+    <div class="input-group">
+      <label for="playerName">Tên của bạn</label>
+      <input class="input" id="playerName" placeholder="VD: Tuấn, Linh, Đào..." maxlength="20" autocomplete="off">
+    </div>
+    <button class="btn btn-primary btn-lg" onclick="enterLobby()">
+      🚀 Vào phòng chơi
+    </button>
+  </div>
+
+  <div class="card" style="border-color: var(--accent); background: rgba(196,164,90,0.05);">
+    <p style="color:var(--text-secondary); font-size:0.85rem; text-align:center; line-height:1.6;">
+      <strong style="color:var(--accent);">Đồng Lãng</strong> là trò chơi suy luận xã hội.
+      Ban đêm, các nhân vật có năng lực hành động bí mật.
+      Ban ngày, mọi người thảo luận và bầu để treo Người đáng nghi.
+      Số lượng người chơi: <strong>5 – 40 người</strong>.
+    </p>
+  </div>
+
+  <div style="text-align:center; margin-top:20px;">
+    <button class="btn btn-ghost btn-sm" onclick="toggleLanguage()">
+      🌐 Tiếng Anh / Tiếng Việt
+    </button>
+  </div>
+
+  <div style="text-align:center; margin-top:16px; padding-bottom:10px;">
+    <p style="font-size:0.7rem; color:var(--text-muted);">
+      Kết nối qua mạng"
+
+    </p>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     SCREEN 2: LOBBY (create / join)
+     ═══════════════════════════════════════════════════════════════ -->
+<div class="screen" id="screen_lobby" style="display:none;">
+  <h1>🌙 ĐỒNG LÃNG</h1>
+  <p class="subtitle">Tạo phòng hoặc tham gia phòng chơi</p>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('create')">Tạo phòng</button>
+    <button class="tab" onclick="switchTab('join')">Tham gia</button>
+  </div>
+
+  <!-- TẠO PHÒNG -->
+  <div id="tab_create">
+    <div class="card">
+      <div class="input-group">
+        <label for="roomName">Tên phòng</label>
+        <input class="input" id="roomName" placeholder="VD: Đãi 팁 Lãng tối nay" maxlength="30">
+      </div>
+      <div class="input-group">
+        <label for="roomPassword">Mã phòng (6 chữ số)</label>
+        <input class="input" id="roomPassword" placeholder="Tự động hoặc nhập thủ công" maxlength="6" inputmode="numeric">
+        <p style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">
+          Mọi người cần mã này để vào phòng.
+        </p>
+      </div>
+      <div class="input-group">
+        <label for="maxPlayers">Số người tối đa</label>
+        <select class="input" id="maxPlayers">
+          <option value="8">8 người</option>
+          <option value="10">10 người</option>
+          <option value="12">12 người</option>
+          <option value="15">15 người</option>
+          <option value="20">20 người</option>
+          <option value="25">25 người</option>
+          <option value="30">30 người</option>
+          <option value="35">35 người</option>
+          <option value="40" selected>40 người</option>
+        </select>
+      </div>
+      <div class="input-group">
+        <label for="discordWebhook">Discord Webhook URL (tùy chọn)</label>
+        <input class="input" id="discordWebhook" placeholder="https://discord.com/api/webhooks/...">
+        <p style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">
+          Nếu có, ứng dụng sẽ gửi thông báo về Discord mỗi đêm / ngày.
+          <br><a href="https://support.discord.com/hc/en-us/articles/228382828" target="_blank" style="color:var(--accent); font-size:0.72rem;">Hướng dẫn tạo Webhook →</a>
+        </p>
+      </div>
+      <button class="btn btn-primary" onclick="createRoom()">
+        ✨ Tạo phòng
+      </button>
+    </div>
+  </div>
+
+  <!-- THAM GIA -->
+  <div id="tab_join" style="display:none;">
+    <div class="card">
+      <div class="input-group">
+        <label for="joinRoomId">Mã phòng</label>
+        <input class="input" id="joinRoomId" placeholder="VD: A1B2C3" maxlength="7">
+      </div>
+      <div class="input-group">
+        <label for="joinPassword">Mã 6 chữ số</label>
+        <input class="input" id="joinPassword" placeholder="123456" maxlength="6" inputmode="numeric">
+      </div>
+      <div class="input-group">
+        <label for="joinName">Tên của bạn</label>
+        <input class="input" id="joinName" placeholder="VD: Tuấn" maxlength="20">
+      </div>
+      <button class="btn btn-secondary" onclick="joinRoom()">
+        🔑 Vào phòng
+      </button>
+    </div>
+
+    <div id="quickJoin" style="margin-top:12px;"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     SCREEN 3: GAME ROOM (lobby / role select / game)
+     ═══════════════════════════════════════════════════════════════ -->
+<div class="screen" id="screen_room">
+  <!-- Top bar -->
+  <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px;">
+    <div style="flex:1; min-width:0;">
+      <h2 style="font-size:1rem; margin:0; color:var(--accent);" id="roomTitle">Phòng chờ</h2>
+      <p style="font-size:0.75rem; color:var(--text-muted); margin:0;">
+        <span id="roomPlayerCount">0</span> / <span id="roomMaxPlayers">0</span> người · Mã: <span id="showRoomId">—</span>
+      </p>
+    </div>
+    <button class="btn btn-ghost btn-sm" onclick="leaveRoom()">Thoát</button>
+  </div>
+
+  <!-- Game state messages -->
+  <div id="gameStatusMessage" style="text-align:center; color:var(--text-secondary); font-size:0.9rem; margin-bottom:12px; min-height:20px;">
+    Đang chờ chủ phòngkhởi động trò chơi…
+  </div>
+
+  <!-- Tabs: Danh sách / Chọn vai / Thông tin -->
+  <div class="tabs">
+    <button class="tab active" id="tab_players" onclick="switchRoomTab('players')">👥 Người chơi</button>
+    <button class="tab" id="tab_roles" onclick="switchRoomTab('roles')">🃏 Chọn vai</button>
+    <button class="tab" id="tab_info" onclick="switchRoomTab('info')">ℹ️ Thông tin</button>
+  </div>
+
+  <!-- TAB: Người chơi -->
+  <div id="roomTab_players">
+    <div id="playerList"></div>
+    <div id="agreeStatus" style="text-align:center; margin-top:12px; padding:12px; background:var(--bg-card); border-radius:var(--radius); border:1px solid var(--border);"></div>
+    <div id="startGameArea" style="margin-top:12px; text-align:center;"></div>
+    <div id="hostControlsArea" style="margin-top:8px; text-align:center; display:none;"></div>
+  </div>
+
+  <!-- TAB: Chọn vai (host only) -->
+  <div id="roomTab_roles" style="display:none;">
+    <p style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:12px;">
+      Chủ phòng chọn vai cho trò chơi. Tất cả người chơi đều có thể xem và phải đồng ý sebelum trò chơi bắt đầu.
+    </p>
+    <div id="roleCatalog"></div>
+    <div id="selectedRolesSummary" style="margin-top:12px;"></div>
+    <button class="btn btn-primary" id="confirmRolesBtn" onclick="confirmRoles()" style="display:none;">
+      ✅ Xác nhận chọn vai
+    </button>
+  </div>
+
+  <!-- TAB: Thông tin -->
+  <div id="roomTab_info" style="display:none;">
+    <div class="card">
+      <h3>📖 Cách chơi</h3>
+      <p style="color:var(--text-secondary); font-size:0.85rem; line-height:1.6;">
+        <strong>Ban đêm:</strong> Các nhân vật có năng lực hành động bí mật (xem ở tab "Vai của tôi").
+        <strong>Ban ngày:</strong> Mọi người thảo luận mặt đối mặt, sau đó bầu để treo một người.
+        <strong>Thắng:</strong>
+        <ul style="padding-left:16px; margin:6px 0;">
+          <li><span style="color:var(--villager);">✓</span> Làng dân thắng khi hết con ái nạ ma túy r 퉨 (Vampire).</li>
+          <li><span style="color:var(--wolf);">✓</span> Ái nạ Ma thắng khi số ngưọời làng dân ≤ số lũ Ma túy + Vampire.</li>
+          <li><span style="color:var(--vampire);">✓</span> Vampire thắng khi nguฬời chơi sót sống chỉ Hib mình.</li>
+        </ul>
+      </p>
+    </div>
+    <div class="card">
+      <h3>📡 Discord</h3>
+      <p style="color:var(--text-secondary); font-size:0.85rem; line-height:1.6;">
+        Nếu chủ phòng cậu Discord Webhook, mỗi đêm / ngày sẽ có thông báo tự động gửi vào kênh Discord.
+        <br><span style="font-size:0.75rem;">Phát triển thêm từ đầu để tương thích Discord server sau này.</span>
+      </p>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════
+       ĐÓNG VAI CỦA TÔI (hiển thị trong suốt trò chơi)
+       ═══════════════════════════════════════════════════════════════ -->
+  <div id="myRolePanel" style="display:none;">
+    <div class="card card-accent" id="myRoleCard">
+      <div style="display:flex; align-items:center; gap:12px;">
+        <div class="role-reveal-icon" id="myRoleIcon">🧑</div>
+        <div style="flex:1;">
+          <div class="role-reveal-name" id="myRoleName">—</div>
+          <div class="role-reveal-team" id="myRoleTeam">—</div>
+          <div class="role-reveal-desc" id="myRoleDesc">—</div>
+        </div>
+      </div>
+      <div class="role-reveal-meta" id="myRoleMeta"></div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════
+       NIGHT ACTION PANEL (hiển thị khi đến đêm)
+       ═══════════════════════════════════════════════════════════════ -->
+  <div id="nightPanel" style="display:none;">
+    <div class="card card-wolf">
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+        <span style="font-size:1.2rem;">🌙</span>
+        <span>Đêm <span id="currentNightNum">1</span> — Hành động của bạn</span>
+      </div>
+      <div id="nightActionContent"></div>
+      <button class="btn btn-primary" id="nightActionDoneBtn" style="display:none;" onclick="submitNightAction()">
+        ✅ Xong hành động
+      </button>
+    </div>
+    <div id="wolfChatBox" style="display:none;">
+      <div class="card" style="border-color:var(--wolf);">
+        <p style="font-size:0.8rem; color:var(--wolf); margin-bottom:8px;">
+          💬 Chat với clan ái nạ (chỉ visible cho ái nạ / werwolf aligned)
+        </p>
+        <div style="display:flex; gap:8px;">
+          <input class="input" id="wolfChatInput" placeholder="Nhập tin nhắn..." style="flex:1;">
+          <button class="btn btn-sm btn-wolf" onclick="sendWolfChat()">Gửi</button>
+        </div>
+      </div>
+      <div id="wolfChatMessages" style="max-height:100px; overflow-y:auto;"></div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════
+       DAY / VOTING PANEL
+       ═══════════════════════════════════════════════════════════════ -->
+  <div id="votingPanel" style="display:none;">
+    <div class="timer-bar"><div class="timer-fill" id="voteTimerFill" style="width:100%"></div></div>
+    <p style="text-align:center; font-size:0.9rem; color:var(--text-secondary); margin-bottom:12px;">
+      ☀️ <strong>Ban ngày <span id="dayNum">1</span></strong> — Chọn người để treo:
+    </p>
+    <div class="vote-grid" id="voteOptions"></div>
+    <button class="btn btn-danger" id="confirmVoteBtn" style="display:none;" onclick="submitVote()">
+      🗳️ Gửi phiếu bầu
+    </button>
+    <p style="text-align:center; font-size:0.75rem; color:var(--text-muted); margin-top:8px;">
+      Bình tĩnh thảo luận trước rồi bầu. Vote là ẩn (không ai biết bạn bầu ai).
+    </p>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════
+       NIGHT RESULTS (hiển thị sau đêm)
+       ═══════════════════════════════════════════════════════════════ -->
+  <div id="nightResultsPanel" style="display:none;">
+    <div class="card" style="text-align:center;">
+      <h3>🌅 Kết đêm</h3>
+      <div id="nightResultsContent" style="margin-top:12px;"></div>
+      <button class="btn btn-primary" id="nightResultsNextBtn" onclick="advanceToVoting()">
+        ☀️ Sang ban ngày & Bầu
+      </button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════
+       GAME OVER
+       ═══════════════════════════════════════════════════════════════ -->
+  <div id="gameOverPanel" style="display:none;">
+    <div class="gameover-box card card-accent">
+      <div class="gameover-icon">🏆</div>
+      <div class="gameover-title" id="gameOverTitle">—</div>
+      <div class="gameover-detail" id="gameOverMessage">—</div>
+      <div class="eliminated-list" id="gameOverEliminated"></div>
+      <button class="btn btn-primary" onclick="resetToHome()">
+        🔄 Chơi lại từ đầu
+      </button>
+    </div>
+  </div>
+</div>
+
+</div><!-- /#app -->
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════════════════
+const state = {
+  socket: null,
+  roomId: null,
+  playerName: '',
+  isHost: false,
+  myRole: null,
+  myTeam: null,
+  myRealRole: null,
+  nightActionDone: false,
+  selectedVoteTarget: null,
+  language: 'vi', // 'vi' or 'en'
+  serverUrl: window.location.origin,
+};
+
+const ROLE_ICONS = {
+  villager: '🧑',
+  seer: '👁️',
+  doctor: '💚',
+  hunter: '🔫',
+  cupid: '💕',
+  builder: '🔧',
+  prophet: '📜',
+  veteran: '🛡️',
+  werewolf: '🐺',
+  wolf_alpha: '🐺‍🔥',
+  baby_wolf: '🐶',
+  bigfoot: '🦶',
+  vampire: '🧛',
+  doppelganger: '🎭',
+  drunk: '🥴',
+  troublemaker: '😈',
+  shaman: '🔮',
+  sorcerer: '🧙',
+  robber: '💰',
+  huntress: '🏹',
+  jester: '🤡',
+  peace_lover: '☮️',
+  retarded: '🤪',
+  mafioso: '🕴️',
+  mutant: '🧬',
+  witch: '🕯️',
+};
+
+const TEAM_LABELS = {
+  vi: { villager: 'Làng Dân', werewolf: 'Ái Nạ Ma', vampire: 'Vampire', neutral: 'Trung Lập' },
+  en: { villager: 'Villager', werewolf: 'Werewolf', vampire: 'Vampire', neutral: 'Neutral' }
+};
+
+const TEAM_COLORS = {
+  villager: '#3a6b3a',
+  werewolf: '#8b2500',
+  vampire: '#6b206b',
+  neutral: '#5a5a7a'
+};
+
+const ROLE_CATEGORIES = [
+  { key: 'villager', label: { vi: '👥 Làng Dân', en: '👥 Villagers' }, ids: ['villager','seer','doctor','hunter','cupid','builder','prophet','veteran'] },
+  { key: 'werewolf', label: { vi: '🐺 Ái Nạ Ma', en: '🐺 Werewolves' }, ids: ['werewolf','wolf_alpha','baby_wolf','bigfoot'] },
+  { key: 'vampire', label: { vi: '🧛 Vampire', en: '🧛 Vampires' }, ids: ['vampire'] },
+  { key: 'neutral', label: { vi: '🎭 Trung Lập', en: '🎭 Neutral' }, ids: ['doppelganger','drunk','troublemaker','shaman','sorcerer','robber','huntress','jester','peace_lover','retarded','mafioso','mutant','witch'] },
+];
+
+// ═══════════════════════════════════════════════════════════════════════════
+// LANGUAGE
+// ═══════════════════════════════════════════════════════════════════════════
+function t(key) {
+  const dict = {
+    vi: {
+      home_title: 'ĐỒNG LÃNG',
+      home_subtitle: 'Trò chơi ma húa đêm — đội nhóm, suy luận, và sự dối trá',
+      enter_lobby: '🚀 Vào phòng chơi',
+      create_room: 'Tạo phòng',
+      join_room: 'Tham gia',
+      room_name: 'Tên phòng',
+      room_password: 'Mã phòng (6 chữ số)',
+      room_password_hint: 'Mọi người cần mã này để vào phòng.',
+      max_players: 'Số người tối đa',
+      discord_webhook: 'Discord Webhook URL (tùy chọn)',
+      discord_webhook_hint: 'Nếu có, ứng dụng sẽ gửi thông báo về Discord mỗi đêm / ngày.',
+      discord_help: 'Hướng dẫn tạo Webhook →',
+      create_button: '✨ Tạo phòng',
+      join_room_id: 'Mã phòng',
+      join_password: 'Mã 6 chữ số',
+      join_name: 'Tên của bạn',
+      join_button: '🔑 Vào phòng',
+      player_name: 'Tên của bạn',
+      player_name_placeholder: 'VD: Tuấn, Linh, Đào...',
+      lobby_title: 'Phòng chờ',
+      waiting_host: 'Đang chờ chủ phòng khởi động trò chơi…',
+      players_tab: '👥 Người chơi',
+      roles_tab: '🃏 Chọn vai',
+      info_tab: 'ℹ️ Thông tin',
+      role_catalog_title: 'Chọn vai cho trò chơi',
+      role_catalog_desc: 'Chủ phòng chọn vai. Tất cả người chơi đều có thể xem và phải đồng ý trước khi trò chơi bắt đầu.',
+      no_roles_selected: 'Chưa có vai nào được chọn. Vui lòng chọn vai ở trên.',
+      confirm_roles: '✅ Xác nhận chọn vai',
+      agree_roles: 'Tôi đồng ý với các vai đã chọn',
+      agree_all: 'Tất cả đã đồng ý — có thể bắt đầu!',
+      not_agree_all: 'Chưa đủ mọi người đồng ý.',
+      start_game: '🚀 Bắt đầu trò chơi',
+      my_role: 'Vai của tôi',
+      night_phase: '🌙 Ban đêm',
+      night_action: 'Hành động của bạn',
+      night_action_done: '✅ Xong hành động',
+      day_phase: '☀️ Ban ngày',
+      day_vote: 'Chọn người để treo:',
+      vote_submit: '🗳️ Gửi phiếu bầu',
+      vote_hint: 'Bình tĩnh thảo luận trước rồi bầu. Vote là ẩn.',
+      night_results: '🌅 Kết đêm',
+      night_results_next: '☀️ Sang ban ngày & Bầu',
+      game_over: '🏆 Kết thúc trò chơi',
+      play_again: '🔄 Chơi lại từ đầu',
+      leave_room: 'Thoát',
+      eliminated: 'Tanke 🎫',
+      alive: 'Sống',
+      agreed: 'Đồng ý',
+      not_agreed: 'Chưa đồng ý',
+      host: 'Chủ phòng',
+      wolf_revenge: '🔥 Cơn giận của đàn sói! Tối nay ái nạ có thể tắm 2 người!',
+      lovers_die: '💕 Người yêu cũng bị treo theo',
+      hunter_shoot: '🔫 Hunter bắt buộc bắn một người khi bị treo!',
+      no_webhook: 'Chưa cài Discord Webhook.',
+      how_to_play_title: '📖 Cách chơi',
+      how_to_play_desc: 'Ban đêm: nhân vật năng lực hành động bí mật. Ban ngày: thảo luận và bầu treo người nghi ngờ.',
+      discord_title: '📡 Discord',
+      discord_desc: 'Webhook gửi thông báo đêm/ngày vào kênh Discord. Xây dựng từ đầu để tương thích Discord server sau này.',
+      language_toggle: '🌐 Tiếng Anh / Tiếng Việt',
+      error_room_not_found: 'Phòng không tồn tại.',
+      error_wrong_password: 'Sai mã phòng.',
+      error_room_full: 'Phòng đã đầy.',
+      error_already_in: 'Bạn đã ở trong phòng này.',
+      error_game_started: 'Trò chơi đã bắt đầu.',
+      error_no_roles: 'Chưa chọn vai.',
+      error_not_all_agree: 'Chưa phải ai cũng đồng ý.',
+      error_invalid_target: 'Người chọn không hợp lệ.',
+      error_cannot_vote: 'Peace Lover không thể bầu.',
+      error_no_wolves: 'Phải có ít nhất 1 Ái Nạ Ma hoặc Vampire.',
+      error_too_many_roles: 'Quá nhiều vai đặc biệt cho số người chơi.',
+      room_expired: 'Phòng hết giờ chờ (20 phút không hoạt động).',
+      toast_waiting: 'Đang chờ…',
+      toast_agreed: 'Bạn đã đồng ý!',
+      toast_roles_confirmed: 'Vai đã được xác nhận.',
+    },
+    en: {
+      home_title: 'WEREWOLF',
+      home_subtitle: 'A night-time social deduction game — teamwork, reasoning, and deception',
+      enter_lobby: '🚀 Enter Lobby',
+      create_room: 'Create Room',
+      join_room: 'Join Room',
+      room_name: 'Room Name',
+      room_password: 'Room Password (6 digits)',
+      room_password_hint: 'Everyone needs this code to enter.',
+      max_players: 'Max Players',
+      discord_webhook: 'Discord Webhook URL (optional)',
+      discord_webhook_hint: 'If set, the app sends night/day announcements to Discord.',
+      discord_help: 'How to create a Webhook →',
+      create_button: '✨ Create Room',
+      join_room_id: 'Room Code',
+      join_password: '6-digit Password',
+      join_name: 'Your Name',
+      join_button: '🔑 Join Room',
+      player_name: 'Your Name',
+      player_name_placeholder: 'e.g. Tuan, Linh, Dao...',
+      lobby_title: 'Waiting Room',
+      waiting_host: 'Waiting for host to start the game…',
+      players_tab: '👥 Players',
+      roles_tab: '🃏 Choose Roles',
+      info_tab: 'ℹ️ Info',
+      role_catalog_title: 'Choose roles for this game',
+      role_catalog_desc: 'The host picks roles. All players can see them and must agree before the game starts.',
+      no_roles_selected: 'No roles selected yet. Please choose roles above.',
+      confirm_roles: '✅ Confirm Role Selection',
+      agree_roles: 'I agree with the selected roles',
+      agree_all: 'Everyone has agreed — ready to start!',
+      not_agree_all: 'Not everyone has agreed yet.',
+      start_game: '🚀 Start Game',
+      my_role: 'My Role',
+      night_phase: '🌙 Night',
+      night_action: 'Your Action',
+      night_action_done: '✅ Done with Action',
+      day_phase: '☀️ Day',
+      day_vote: 'Choose who to hang:',
+      vote_submit: '🗳️ Submit Vote',
+      vote_hint: 'Discuss first, then vote. Your vote is secret.',
+      night_results: '🌅 Night Results',
+      night_results_next: '☀️ Day & Vote',
+      game_over: '🏆 Game Over',
+      play_again: '🔄 Play Again',
+      leave_room: 'Leave',
+      eliminated: 'Eliminated 🎫',
+      alive: 'Alive',
+      agreed: 'Agreed',
+      not_agreed: 'Not Agreed',
+      host: 'Host',
+      wolf_revenge: '🔥 The Wolf Pack is angry! Werewolves can kill 2 players tonight!',
+      lovers_die: '💕 Lover also dies',
+      hunter_shoot: '🔫 Hunter must shoot someone when hanged!',
+      no_webhook: 'No Discord webhook set.',
+      how_to_play_title: '📖 How to Play',
+      how_to_play_desc: 'Night: special roles act secretly. Day: discuss and vote to hang someone.',
+      discord_title: '📡 Discord',
+      discord_desc: 'Webhook sends night/day announcements to a Discord channel. Built with Discord server integration in mind from the start.',
+      language_toggle: '🌐 English / Tiếng Việt',
+      error_room_not_found: 'Room not found.',
+      error_wrong_password: 'Wrong password.',
+      error_room_full: 'Room is full.',
+      error_already_in: 'You are already in this room.',
+      error_game_started: 'Game already started.',
+      error_no_roles: 'No roles selected.',
+      error_not_all_agree: 'Not everyone has agreed.',
+      error_invalid_target: 'Invalid target.',
+      error_cannot_vote: 'Peace Lover cannot vote.',
+      error_no_wolves: 'You must select at least 1 Werewolf or Vampire.',
+      error_too_many_roles: 'Too many special roles for the number of players.',
+      room_expired: 'Room expired (20 minutes of inactivity).',
+      toast_waiting: 'Waiting…',
+      toast_agreed: 'You agreed!',
+      toast_roles_confirmed: 'Roles confirmed.',
+    }
+  };
+  return dict[state.language][key] || dict.vi[key] || key;
+}
+
+function toggleLanguage() {
+  state.language = state.language === 'vi' ? 'en' : 'vi';
+  refreshUI();
+  showToast(state.language === 'vi' ? 'Tiếng Việt' : 'English');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════════════════════════════════════════
+function showToast(message, type) {
+  type = type || 'info';
+  const container = document.getElementById('toastContainer');
+  const toast = document.createElement('div');
+  toast.className = 'toast ' + type;
+  toast.textContent = message;
+  container.appendChild(toast);
+  setTimeout(() => { if (toast.parentNode) toast.remove(); }, 3000);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SCREEN MANAGEMENT
+// ═══════════════════════════════════════════════════════════════════════════
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  const screen = document.getElementById(id);
+  if (screen) screen.classList.add('active');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// HOME / LOBBY
+// ═══════════════════════════════════════════════════════════════════════════
+function enterLobby() {
+  const name = document.getElementById('playerName').value.trim();
+  if (!name) { showToast('Vui lòng nhập tên!', 'error'); return; }
+  state.playerName = name;
+  showScreen('screen_lobby');
+  refreshLobby();
+}
+
+function switchTab(tab) {
+  document.querySelectorAll('#tab_create, #tab_join').forEach(el => el.style.display = 'none');
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+
+  if (tab === 'create') {
+    document.getElementById('tab_create').style.display = 'block';
+    document.querySelectorAll('.tab')[0].classList.add('active');
+  } else {
+    document.getElementById('tab_join').style.display = 'block';
+    document.querySelectorAll('.tab')[1].classList.add('active');
+  }
+}
+
+function refreshLobby() {
+  // Autofill password if empty
+  const pwInput = document.getElementById('roomPassword');
+  if (!pwInput.value) {
+    pwInput.value = String(Math.floor(100000 + Math.random() * 900000));
+  }
+}
+
+function createRoom() {
+  const name = document.getElementById('roomName').value.trim() || 'Phòng chờ';
+  const password = document.getElementById('roomPassword').value.trim();
+  if (password.length !== 6 || !/^\d{6}$/.test(password)) {
+    showToast('Mã phòng phải là 6 chữ số!', 'error');
+    return;
+  }
+  const maxPlayers = parseInt(document.getElementById('maxPlayers').value);
+  const webhook = document.getElementById('discordWebhook').value.trim();
+
+  state.socket.emit('create_room', {
+    playerName: state.playerName,
+    roomName: name,
+    password: password,
+    maxPlayers: maxPlayers,
+    discordWebhook: webhook
+  });
+}
+
+function joinRoom() {
+  const roomId = document.getElementById('joinRoomId').value.trim().toUpperCase();
+  const password = document.getElementById('joinPassword').value.trim();
+  const name = document.getElementById('joinName').value.trim() || state.playerName;
+
+  if (!roomId) { showToast('Vui lòng nhập mã phòng!', 'error'); return; }
+  if (!password || password.length !== 6) { showToast('Vui lòng nhập mã 6 chữ số!', 'error'); return; }
+
+  state.playerName = name;
+  state.socket.emit('join_room', { roomId, password, playerName: name });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ROOM
+// ═══════════════════════════════════════════════════════════════════════════
+function enterRoom(data) {
+  state.roomId = data.roomId;
+  showScreen('screen_room');
+  refreshRoom();
+}
+
+function leaveRoom() {
+  if (state.socket) {
+    state.socket.emit('leave_room');
+    state.socket.disconnect();
+  }
+  // Reset state
+  state.roomId = null;
+  state.isHost = false;
+  state.myRole = null;
+  state.myTeam = null;
+  state.myRealRole = null;
+  state.nightActionDone = false;
+  state.selectedVoteTarget = null;
+  // Clear panels
+  document.getElementById('myRolePanel').style.display = 'none';
+  document.getElementById('nightPanel').style.display = 'none';
+  document.getElementById('votingPanel').style.display = 'none';
+  document.getElementById('nightResultsPanel').style.display = 'none';
+  document.getElementById('gameOverPanel').style.display = 'none';
+  showScreen('screen_home');
+}
+
+function refreshRoom() {
+  if (!state.roomId) return;
+
+  // Update host controls
+  updateHostControls();
+
+  // Update header
+  document.getElementById('roomTitle').textContent = t('lobby_title');
+  // Room ID will be shown after we get it from server
+
+  // Refresh player list, role catalog, etc.
+  updatePlayerList();
+  updateRoleCatalog();
+  updateAgreeStatus();
+  updateStartButton();
+  updateMyRole();
+  updateNightPanel();
+  updateVotingPanel();
+  updateNightResults();
+  updateGameOver();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PLAYER LIST
+// ═══════════════════════════════════════════════════════════════════════════
+function updatePlayerList() {
+  const container = document.getElementById('playerList');
+  if (!container) return;
+
+  // This will be populated by socket updates
+  // For now, just clear
+  container.innerHTML = '<div class="loading-spinner"></div>';
+}
+
+function renderPlayerList(players, myId, eliminatedIds) {
+  const container = document.getElementById('playerList');
+  if (!container) return;
+
+  if (!players || players.length === 0) {
+    container.innerHTML = '<p style="color:var(--text-muted); text-align:center; padding:12px;">Chưa có người chơi nào.</p>';
+    return;
+  }
+
+  let html = '';
+  for (const p of players) {
+    const isMe = p.id === myId;
+    const isEliminated = eliminatedIds && eliminatedIds.includes(p.id);
+    const initials = p.name.substring(0, 2).toUpperCase();
+    const teamColor = p.team ? TEAM_COLORS[p.team] || 'var(--text-muted)' : 'var(--text-muted)';
+
+    html += `
+      <div class="player-item ${isEliminated ? 'eliminated' : ''}">
+        <div class="player-avatar ${p.isHost ? 'host' : ''}" style="color:${teamColor};">
+          ${p.isHost ? '👑' : initials}
+        </div>
+        <div style="flex:1; min-width:0;">
+          <div class="player-name">${p.name} ${p.isHost ? '👑' : ''} ${isMe ? '(bạn)' : ''}</div>
+          <div class="player-role">${p.role || 'Chưa có vai'}</div>
+        </div>
+        <div style="display:flex; align-items:center; gap:4px; flex-shrink:0;">
+          ${p.agreed !== undefined ? `<span class="player-status ${p.agreed ? 'agreed' : 'not_agreed'}">${p.agreed ? '✓' : '⏳'}</span>` : ''}
+          ${isEliminated ? `<span class="player-status eliminated">${t('eliminated')}</span>` : ''}
+        </div>
+      </div>
+    `;
+  }
+
+  container.innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ROLE CATALOG
+// ═══════════════════════════════════════════════════════════════════════════
+function updateRoleCatalog() {
+  const container = document.getElementById('roleCatalog');
+  const confirmBtn = document.getElementById('confirmRolesBtn');
+  if (!container) return;
+
+  // Only show if host and in lobby
+  if (!state.isHost || state.gameState !== 'lobby') {
+    container.innerHTML = '<p style="color:var(--text-muted); text-align:center; padding:12px;">Sau khi trò chơi bắt đầu, vai sẽ được phân công ngẫu nhiên.</p>';
+    if (confirmBtn) confirmBtn.style.display = 'none';
+    return;
+  }
+
+  container.innerHTML = '';
+
+  for (const cat of ROLE_CATEGORIES) {
+    const label = cat.label[state.language];
+    const div = document.createElement('div');
+    div.style.marginBottom = '16px';
+    div.innerHTML = `<h3 style="color:${TEAM_COLORS[cat.key]}; margin-bottom:8px;">${label}</h3>`;
+    container.appendChild(div);
+
+    for (const roleId of cat.ids) {
+      const role = window.ROLES && window.ROLES[roleId];
+      if (!role) continue;
+
+      const isSelected = state.selectedRoleIds && state.selectedRoleIds.includes(roleId);
+      const card = document.createElement('div');
+      card.className = `role-card ${cat.key} ${isSelected ? 'selected' : ''}`;
+      card.dataset.roleId = roleId;
+      card.onclick = () => toggleRole(roleId);
+
+      const icon = ROLE_ICONS[roleId] || '❓';
+      card.innerHTML = `
+        <div class="role-icon ${cat.key}">${icon}</div>
+        <div class="role-info">
+          <div class="role-name">${role.name}</div>
+          <div class="role-desc">${role.desc}</div>
+        </div>
+        <span class="role-tag ${cat.key}">${t(cat.key === 'villager' ? 'villager' : cat.key === 'werewolf' ? 'werewolf' : cat.key === 'vampire' ? 'vampire' : 'neutral')}</span>
+      `;
+
+      container.appendChild(card);
+    }
+  }
+
+  // Update summary
+  updateRolesSummary();
+
+  // Show confirm button if roles selected
+  if (state.selectedRoleIds && state.selectedRoleIds.length > 0) {
+    if (confirmBtn) confirmBtn.style.display = 'block';
+  } else {
+    if (confirmBtn) confirmBtn.style.display = 'none';
+  }
+}
+
+function toggleRole(roleId) {
+  if (!state.selectedRoleIds) state.selectedRoleIds = [];
+
+  const idx = state.selectedRoleIds.indexOf(roleId);
+  if (idx >= 0) {
+    state.selectedRoleIds.splice(idx, 1);
+  } else {
+    state.selectedRoleIds.push(roleId);
+  }
+
+  // Update UI
+  updateRoleCatalog();
+}
+
+function updateRolesSummary() {
+  const container = document.getElementById('selectedRolesSummary');
+  if (!container) return;
+
+  if (!state.selectedRoleIds || state.selectedRoleIds.length === 0) {
+    container.innerHTML = '';
+    return;
+  }
+
+  const counts = {};
+  for (const id of state.selectedRoleIds) {
+    if (!counts[id]) counts[id] = 0;
+    counts[id]++;
+  }
+
+  let html = '<h3 style="font-size:0.9rem; color:var(--accent); margin-bottom:8px;">Vai đã chọn (' + state.selectedRoleIds.length + '):</h3>';
+  for (const [id, count] of Object.entries(counts)) {
+    const role = window.ROLES && window.ROLES[id];
+    if (!role) continue;
+    const icon = ROLE_ICONS[id] || '❓';
+    html += `<div style="display:flex; align-items:center; gap:6px; padding:4px 0; font-size:0.85rem;">
+      <span>${icon}</span>
+      <span>${role.name}</span>
+      <span style="color:var(--text-muted);">× ${count}</span>
+    </div>`;
+  }
+
+  container.innerHTML = html;
+}
+
+function confirmRoles() {
+  if (!state.selectedRoleIds || state.selectedRoleIds.length === 0) {
+    showToast(t('no_roles_selected'), 'error');
+    return;
+  }
+
+  state.socket.emit('select_roles', { roleIds: state.selectedRoleIds });
+  showToast(t('toast_roles_confirmed'), 'success');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// AGREE / START
+// ═══════════════════════════════════════════════════════════════════════════
+function updateAgreeStatus() {
+  const container = document.getElementById('agreeStatus');
+  if (!container) return;
+
+  // Will be updated by socket events
+  container.innerHTML = '';
+}
+
+function updateStartButton() {
+  const area = document.getElementById('startGameArea');
+  if (!area) return;
+
+  if (!state.isHost || state.gameState !== 'lobby') {
+    area.innerHTML = '';
+    return;
+  }
+
+  const canStart = state.allAgreed && state.selectedRoleIds && state.selectedRoleIds.length > 0;
+  area.innerHTML = `
+    <button class="btn btn-primary btn-lg" onclick="startGame()" ${canStart ? '' : 'disabled'}>
+      ${t('start_game')}
+    </button>
+  `;
+}
+
+function agreeToRoles() {
+  state.socket.emit('agree_roles');
+  showToast(t('toast_agreed'), 'success');
+}
+
+function startGame() {
+  state.socket.emit('start_game');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// MY ROLE
+// ═══════════════════════════════════════════════════════════════════════════
+function updateMyRole() {
+  const panel = document.getElementById('myRolePanel');
+  if (!panel) return;
+
+  if (!state.myRole) {
+    panel.style.display = 'none';
+    return;
+  }
+
+  panel.style.display = 'block';
+  const role = window.ROLES && window.ROLES[state.myRole];
+  if (!role) return;
+
+  const icon = ROLE_ICONS[state.myRole] || '❓';
+  const teamLabel = TEAM_LABELS[state.language][state.myTeam] || state.myTeam;
+  const teamColor = TEAM_COLORS[state.myTeam] || 'var(--text-muted)';
+
+  document.getElementById('myRoleIcon').className = `role-reveal-icon ${state.myTeam}`;
+  document.getElementById('myRoleIcon').textContent = icon;
+  document.getElementById('myRoleName').textContent = role.name;
+  document.getElementById('myRoleTeam').textContent = teamLabel;
+  document.getElementById('myRoleTeam').style.color = teamColor;
+  document.getElementById('myRoleDesc').textContent = role.desc;
+
+  // Meta tags
+  const meta = document.getElementById('myRoleMeta');
+  meta.innerHTML = '';
+  const tags = [];
+
+  if (role.isWolf) tags.push({ label: '🐺 Ái Nạ Ma', color: 'var(--wolf)' });
+  if (role.isVampire) tags.push({ label: '🧛 Vampire', color: 'var(--vampire)' });
+  if (role.action) tags.push({ label: '🌙 Có hành động ban đêm', color: 'var(--accent)' });
+  if (role.cannotVote) tags.push({ label: '☮️ Không thể bầu', color: 'var(--info)' });
+  if (role.winsIfHanged) tags.push({ label: '🎭 Thắng nếu bị treo', color: 'var(--danger)' });
+  if (role.immuneToWolf) tags.push({ label: '🛡️ Miễn trừ ái nạ', color: 'var(--success)' });
+  if (role.revengeKill) tags.push({ label: '🔥 Sóng giận (nếu bị treo)', color: 'var(--wolf)' });
+  if (role.switchesTeam) tags.push({ label: '🔄 Có thể đổi phe', color: 'var(--neutral)' });
+  if (role.drunkRole) tags.push({ label: '🥴 Vai thực sự bị ẩn', color: 'var(--accent)' });
+  if (role.knowsWolves) tags.push({ label: '👀 Biết ai là ái nạ', color: 'var(--wolf)' });
+  if (role.winsWithWolves) tags.push({ label: '🐺 Thắng cùng ái nạ', color: 'var(--wolf)' });
+  if (role.canTalkToWolves) tags.push({ label: '💬 Chat với ái nạ', color: 'var(--wolf)' });
+
+  for (const tag of tags) {
+    const span = document.createElement('span');
+    span.textContent = tag.label;
+    span.style.color = tag.color;
+    span.style.borderColor = tag.color + '40';
+    span.style.background = tag.color + '15';
+    meta.appendChild(span);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ROOM TABS
+// ═══════════════════════════════════════════════════════════════════════════
+function switchRoomTab(tab) {
+  document.querySelectorAll('#roomTab_players, #roomTab_roles, #roomTab_info').forEach(el => el.style.display = 'none');
+  document.querySelectorAll('#tab_players, #tab_roles, #tab_info').forEach(t => t.classList.remove('active'));
+
+  if (tab === 'players') {
+    document.getElementById('roomTab_players').style.display = 'block';
+    document.getElementById('tab_players').classList.add('active');
+  } else if (tab === 'roles') {
+    document.getElementById('roomTab_roles').style.display = 'block';
+    document.getElementById('tab_roles').classList.add('active');
+  } else {
+    document.getElementById('roomTab_info').style.display = 'block';
+    document.getElementById('tab_info').classList.add('active');
+  }
+
+  refreshRoom();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// NIGHT PHASE
+// ═══════════════════════════════════════════════════════════════════════════
+function updateNightPanel() {
+  const panel = document.getElementById('nightPanel');
+  if (!panel) return;
+
+  if (state.gameState !== 'night' || !state.myRole) {
+    panel.style.display = 'none';
+    return;
+  }
+
+  panel.style.display = 'block';
+  document.getElementById('currentNightNum').textContent = state.currentNight;
+
+  const role = window.ROLES && window.ROLES[state.myRole];
+  if (!role || !role.action) {
+    document.getElementById('nightActionContent').innerHTML = '<p style="color:var(--text-secondary);">Bạn không có hành động ban đêm.</p>';
+    document.getElementById('nightActionDoneBtn').style.display = 'block';
+    return;
+  }
+
+  const content = document.getElementById('nightActionContent');
+  let html = '';
+
+  if (role.action === 'choose_one') {
+    html = `
+      <div class="night-action-box ${state.myTeam === 'werewolf' ? 'wolf' : ''}">
+        <div class="action-title">${t('night_action')}: Chọn 1 người</div>
+        <div class="action-desc">${getActionDescription(role.action)}</div>
+        <div class="target-grid" id="nightTargetGrid"></div>
+      </div>
+    `;
+  } else if (role.action === 'choose_two') {
+    html = `
+      <div class="night-action-box">
+        <div class="action-title">${t('night_action')}: Chọn 2 người</div>
+        <div class="action-desc">${getActionDescription(role.action)}</div>
+        <div class="target-grid" id="nightTargetGrid"></div>
+      </div>
+    `;
+  } else if (role.action === 'choose_team') {
+    html = `
+      <div class="night-action-box">
+        <div class="action-title">${t('night_action')}: Chọn một đội</div>
+        <div class="action-desc">${getActionDescription(role.action)}</div>
+        <div style="display:flex; gap:8px;">
+          <button class="btn btn-secondary btn-sm" onclick="selectNightTeam('villager')">🏘️ Làng Dân</button>
+          <button class="btn btn-secondary btn-sm" onclick="selectNightTeam('werewolf')">🐺 Ái Nạ Ma</button>
+          <button class="btn btn-secondary btn-sm" onclick="selectNightTeam('vampire')">🧛 Vampire</button>
+        </div>
+      </div>
+    `;
+  } else if (role.action === 'choose_side') {
+    html = `
+      <div class="night-action-box">
+        <div class="action-title">Bigfoot: Chọn phe của bạn</div>
+        <div class="action-desc">Tối thứ 2, bạn chọn.join Làng Dân hoặc Ái Nạ Ma.</div>
+        <div style="display:flex; gap:8px;">
+          <button class="btn btn-secondary btn-sm" onclick="selectNightSide('villager')">🏘️ Làng Dân</button>
+          <button class="btn btn-secondary btn-sm" onclick="selectNightSide('werewolf')">🐺 Ái Nạ Ma</button>
+        </div>
+      </div>
+    `;
+  } else if (role.action === 'witch_action') {
+    html = `
+      <div class="night-action-box">
+        <div class="action-title">Phù Tắc: Chọn cứu hoặc giết</div>
+        <div class="action-desc">Mỗi năng lực chỉ dùng 1 lần. Chọn người để cứu (tránh chết) hoặc giết.</div>
+        <div style="display:flex; gap:8px; margin-bottom:8px;">
+          <button class="btn btn-sm" id="witchSaveBtn" onclick="selectWitchAction('save')">💚 Cứu một người</button>
+          <button class="btn btn-sm" id="witchKillBtn" onclick="selectWitchAction('kill')">💀 Giết một người</button>
+        </div>
+        <div class="target-grid" id="nightTargetGrid" style="display:none;"></div>
+      </div>
+    `;
+  } else if (role.action === 'choose_one_then_role') {
+    html = `
+      <div class="night-action-box">
+        <div class="action-title">Shaman: Chọn 1 người,Cho và 1 vai</div>
+        <div class="action-desc">Chọn một người，然后 chọn vai để trao cho họ.</div>
+        <div class="target-grid" id="nightTargetGrid"></div>
+        <div id="shamanRoleSelect" style="display:none; margin-top:8px;">
+          <p style="font-size:0.8rem; color:var(--text-secondary); margin-bottom:4px;">Chọn vai để tặng:</p>
+          <div class="target-grid" id="shamanRoleGrid"></div>
+        </div>
+      </div>
+    `;
+  }
+
+  content.innerHTML = html;
+
+  // Populate target grid
+  if (role.action === 'choose_one' || role.action === 'choose_two' || role.action === 'witch_action') {
+    populateNightTargets(role.action);
+  }
+
+  if (role.action === 'choose_one_then_role') {
+    populateNightTargets('choose_one');
+    // Setup shaman role selection
+    const shamanGrid = document.getElementById('shamanRoleGrid');
+    if (shamanGrid) {
+      shamanGrid.innerHTML = '';
+      const specialRoles = ['seer','doctor','hunter','cupid','builder','prophet','veteran','werewolf','wolf_alpha','baby_wolf','bigfoot','vampire','doppelganger','drunk','troublemaker','shaman','sorcerer','robber','huntress','jester','peace_lover','retarded','mafioso','mutant','witch'];
+      for (const rid of specialRoles) {
+        const r = window.ROLES && window.ROLES[rid];
+        if (!r) continue;
+        const btn = document.createElement('button');
+        btn.className = 'target-btn';
+        btn.textContent = ROLE_ICONS[rid] + ' ' + r.name;
+        btn.onclick = () => selectShamanRole(rid);
+        shamanGrid.appendChild(btn);
+      }
+    }
+  }
+
+  document.getElementById('nightActionDoneBtn').style.display = 'none';
+}
+
+function getActionDescription(action) {
+  const descs = {
+    vi: {
+      choose_one: 'Chọn một người chơi để thực hiện hành động của bạn.',
+      choose_two: 'Chọn hai người chơi.',
+      choose_team: 'Chọn xem bạn muốn xem đội nào (Làng Dân, Ái Nạ Ma, hay Vampire).',
+      choose_side: 'Chọn phe của bạn: Làng Dân hoặc Ái Nạ Ma.',
+      witch_action: 'Chọn cứu (bảo vệ một người khỏi chết) hoặc giết (tắm một người).',
+      choose_one_then_role: 'Chọn một người, sau đó chọn vai để trao cho họ.',
+    },
+    en: {
+      choose_one: 'Choose one player to perform your action on.',
+      choose_two: 'Choose two players.',
+      choose_team: 'Choose which team to reveal: Villager, Werewolf, or Vampire.',
+      choose_side: 'Choose your side: Villager or Werewolf.',
+      witch_action: 'Choose to save (protect someone from death) or kill (eliminate someone).',
+      choose_one_then_role: 'Choose one player, then choose a role to give them.',
+    }
+  };
+  return descs[state.language][action] || '';
+}
+
+function populateNightTargets(actionType) {
+  const grid = document.getElementById('nightTargetGrid');
+  if (!grid) return;
+
+  grid.innerHTML = '';
+  const alivePlayers = state.alivePlayers || [];
+
+  for (const p of alivePlayers) {
+    if (p.id === state.socketId) continue; // Can't target self (for most actions)
+    const btn = document.createElement('button');
+    btn.className = 'target-btn';
+    btn.textContent = (ROLE_ICONS[p.roleId] || '❓') + ' ' + p.name;
+    btn.dataset.targetId = p.id;
+
+    if (actionType === 'choose_one') {
+      btn.onclick = () => selectNightTarget(p.id, 'choose_one');
+    } else if (actionType === 'choose_two') {
+      btn.onclick = () => selectNightTarget(p.id, 'choose_two');
+    } else if (actionType === 'witch_action') {
+      // Witch needs separate save/kill selectors
+    }
+
+    grid.appendChild(btn);
+  }
+
+  document.getElementById('nightActionDoneBtn').style.display = 'block';
+}
+
+function selectNightTarget(targetId, actionType) {
+  if (!state.selectedNightTargets) state.selectedNightTargets = [];
+
+  if (actionType === 'choose_one') {
+    state.selectedNightTargets = [targetId];
+  } else if (actionType === 'choose_two') {
+    if (state.selectedNightTargets.includes(targetId)) {
+      state.selectedNightTargets = state.selectedNightTargets.filter(t => t !== targetId);
+    } else if (state.selectedNightTargets.length < 2) {
+      state.selectedNightTargets.push(targetId);
+    }
+  }
+
+  // Update UI
+  const grid = document.getElementById('nightTargetGrid');
+  if (grid) {
+    grid.querySelectorAll('.target-btn').forEach(btn => {
+      btn.classList.toggle('selected', state.selectedNightTargets && state.selectedNightTargets.includes(btn.dataset.targetId));
+      if (state.selectedNightTargets && state.selectedNightTargets.length >= 2 && actionType === 'choose_two') {
+        btn.disabled = !state.selectedNightTargets.includes(btn.dataset.targetId);
+      }
+    });
+  }
+
+  // Show done button if enough selected
+  if ((actionType === 'choose_one' && state.selectedNightTargets.length === 1) ||
+      (actionType === 'choose_two' && state.selectedNightTargets.length === 2)) {
+    document.getElementById('nightActionDoneBtn').style.display = 'block';
+  }
+}
+
+function selectNightTeam(team) {
+  state.selectedNightTeam = team;
+  state.socket.emit('night_action', { targetId: team, actionType: 'choose_team' });
+  document.getElementById('nightActionDoneBtn').style.display = 'block';
+}
+
+function selectNightSide(side) {
+  state.socket.emit('night_action', { side });
+  showToast('Bạn chọn phe ' + (side === 'villager' ? 'Làng Dân' : 'Ái Nạ Ma'), 'info');
+  document.getElementById('nightActionDoneBtn').style.display = 'block';
+}
+
+function selectWitchAction(type) {
+  const grid = document.getElementById('nightTargetGrid');
+  const saveBtn = document.getElementById('witchSaveBtn');
+  const killBtn = document.getElementById('witchKillBtn');
+  const targetGrid = document.getElementById('nightTargetGrid');
+
+  if (type === 'save') {
+    saveBtn.style.borderColor = 'var(--success)';
+    killBtn.style.borderColor = 'var(--border)';
+    targetGrid.style.display = 'grid';
+    populateNightTargets('witch_action');
+    state.witchActionType = 'save';
+  } else {
+    saveBtn.style.borderColor = 'var(--border)';
+    killBtn.style.borderColor = 'var(--danger)';
+    targetGrid.style.display = 'grid';
+    populateNightTargets('witch_action');
+    state.witchActionType = 'kill';
+  }
+
+  // Setup witch target selection
+  const btns = targetGrid.querySelectorAll('.target-btn');
+  btns.forEach(btn => {
+    btn.onclick = () => {
+      state.witchTargetId = btn.dataset.targetId;
+      state.socket.emit('night_action', {
+        witchAction: state.witchActionType,
+        targetId: state.witchTargetId
+      });
+      document.getElementById('nightActionDoneBtn').style.display = 'block';
+    };
+  });
+
+  document.getElementById('nightActionDoneBtn').style.display = 'block';
+}
+
+function selectShamanRole(newRoleId) {
+  if (state.selectedNightTarget) {
+    state.socket.emit('night_action', {
+      targetId: state.selectedNightTarget,
+      newRoleId: newRoleId
+    });
+    document.getElementById('nightActionDoneBtn').style.display = 'block';
+  }
+}
+
+function submitNightAction() {
+  const action = state.myAction;
+  if (!action) return;
+
+  if (action === 'choose_one') {
+    if (!state.selectedNightTargets || state.selectedNightTargets.length === 0) {
+      showToast('Vui lòng chọn một người!', 'error');
+      return;
+    }
+    state.socket.emit('night_action', { targetId: state.selectedNightTargets[0] });
+  } else if (action === 'choose_two') {
+    if (!state.selectedNightTargets || state.selectedNightTargets.length !== 2) {
+      showToast('Vui lòng chọn hai người!', 'error');
+      return;
+    }
+    state.socket.emit('night_action', { targetIds: state.selectedNightTargets });
+  }
+
+  document.getElementById('nightActionDoneBtn').style.display = 'none';
+  showToast('Hành động đã gửi!', 'success');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// WOLF CHAT
+// ═══════════════════════════════════════════════════════════════════════════
+function sendWolfChat() {
+  const input = document.getElementById('wolfChatInput');
+  const msg = input.value.trim();
+  if (!msg) return;
+
+  state.socket.emit('wolf_chat', { message: msg });
+  input.value = '';
+
+  // Add to local chat box
+  const box = document.getElementById('wolfChatMessages');
+  if (box) {
+    const div = document.createElement('div');
+    div.style.cssText = 'padding:4px 0; font-size:0.8rem; color:var(--wolf); border-bottom:1px solid var(--border);';
+    div.textContent = '🐺 ' + msg;
+    box.appendChild(div);
+    box.scrollTop = box.scrollHeight;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// VOTING
+// ═══════════════════════════════════════════════════════════════════════════
+function updateVotingPanel() {
+  const panel = document.getElementById('votingPanel');
+  if (!panel) return;
+
+  if (state.gameState !== 'voting') {
+    panel.style.display = 'none';
+    return;
+  }
+
+  panel.style.display = 'block';
+  document.getElementById('dayNum').textContent = state.currentNight;
+
+  const options = document.getElementById('voteOptions');
+  options.innerHTML = '';
+
+  const alivePlayers = state.alivePlayers || [];
+  for (const p of alivePlayers) {
+    if (p.id === state.socketId) continue;
+    const btn = document.createElement('button');
+    btn.className = 'vote-btn';
+    btn.innerHTML = `
+      <div class="v-avatar">${p.name.substring(0,2).toUpperCase()}</div>
+      <span>${p.name}</span>
+    `;
+    btn.onclick = () => selectVote(p.id);
+    options.appendChild(btn);
+  }
+
+  document.getElementById('confirmVoteBtn').style.display = 'none';
+}
+
+function selectVote(targetId) {
+  state.selectedVoteTarget = targetId;
+
+  document.querySelectorAll('.vote-btn').forEach(btn => {
+    btn.classList.toggle('selected', btn.dataset.targetId === targetId);
+  });
+
+  document.getElementById('confirmVoteBtn').style.display = 'block';
+}
+
+function submitVote() {
+  if (!state.selectedVoteTarget) {
+    showToast('Vui lòng chọn người để bầu!', 'error');
+    return;
+  }
+
+  state.socket.emit('vote', { targetId: state.selectedVoteTarget });
+  document.getElementById('confirmVoteBtn').style.display = 'none';
+  showToast('Phiếu bầu đã gửi!', 'success');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// NIGHT RESULTS
+// ═══════════════════════════════════════════════════════════════════════════
+function updateNightResults() {
+  const panel = document.getElementById('nightResultsPanel');
+  if (!panel) return;
+
+  if (state.gameState !== 'night_results' && state.gameState !== 'day') {
+    panel.style.display = 'none';
+    return;
+  }
+
+  panel.style.display = 'block';
+
+  const content = document.getElementById('nightResultsContent');
+  if (!content) return;
+
+  content.innerHTML = '';
+  const results = state.nightResults || [];
+
+  for (const r of results) {
+    const div = document.createElement('div');
+    div.className = 'eliminated-item';
+    div.innerHTML = `<span class="skull">🌙</span> ${r.action}`;
+    content.appendChild(div);
+  }
+
+  if (state.wolfRevenge) {
+    const div = document.createElement('div');
+    div.className = 'eliminated-item';
+    div.style.color = 'var(--wolf)';
+    div.innerHTML = '🔥 <strong>' + t('wolf_revenge') + '</strong>';
+    content.appendChild(div);
+  }
+
+  if (state.eliminatedPlayerNames && state.eliminatedPlayerNames.length > 0) {
+    const div = document.createElement('div');
+    div.className = 'eliminated-item';
+    div.style.marginTop = '8px';
+    div.innerHTML = `💀 <strong>Treo:</strong> ${state.eliminatedPlayerNames.join(', ')}`;
+    content.appendChild(div);
+  }
+
+  document.getElementById('nightResultsNextBtn').style.display = 'block';
+}
+
+function advanceToVoting() {
+  state.socket.emit('advance_to_voting');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// GAME OVER
+// ═══════════════════════════════════════════════════════════════════════════
+function updateGameOver() {
+  const panel = document.getElementById('gameOverPanel');
+  if (!panel) return;
+
+  if (state.gameState !== 'gameover') {
+    panel.style.display = 'none';
+    return;
+  }
+
+  panel.style.display = 'block';
+
+  const title = document.getElementById('gameOverTitle');
+  const message = document.getElementById('gameOverMessage');
+  const eliminated = document.getElementById('gameOverEliminated');
+
+  title.textContent = t('game_over');
+  message.textContent = state.gameOverMessage || '';
+
+  // Determine win color
+  if (state.winTeam === 'villager') {
+    title.className = 'gameover-title villager-win';
+  } else if (state.winTeam === 'werewolf') {
+    title.className = 'gameover-title wolf-win';
+  } else if (state.winTeam === 'vampire') {
+    title.className = 'gameover-title vampire-win';
+  } else {
+    title.style.color = 'var(--accent)';
+  }
+
+  eliminated.innerHTML = '';
+  if (state.eliminatedList && state.eliminatedList.length > 0) {
+    const h3 = document.createElement('h3');
+    h3.textContent = 'Người bị treo:';
+    h3.style.marginBottom = '8px';
+    h3.style.color = 'var(--danger)';
+    eliminated.appendChild(h3);
+
+    for (const e of state.eliminatedList) {
+      const div = document.createElement('div');
+      div.className = 'eliminated-item';
+      div.innerHTML = `<span class="skull">💀</span> ${e.name} — ${e.role || 'Không rõ'} (${e.team || '—'})`;
+      eliminated.appendChild(div);
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SOCKET EVENTS
+// ═══════════════════════════════════════════════════════════════════════════
+function initSocket() {
+  state.socket = io(state.serverUrl, {
+    transports: ['websocket', 'polling'],
+    reconnection: true,
+    reconnectionAttempts: 9999,
+    reconnectionDelay: 1000,
+  });
+
+  state.socket.on('connect', () => {
+    console.log('Connected to game server');
+  });
+
+  state.socket.on('disconnect', () => {
+    showToast('Mất kết nối — đang tái kết nối…', 'error');
+  });
+
+  // ── Room created ──
+  state.socket.on('room_created', (data) => {
+    state.roomId = data.roomId;
+    state.isHost = true;
+    showScreen('screen_room');
+    document.getElementById('roomTitle').textContent = data.roomName;
+    document.getElementById('showRoomId').textContent = data.roomId;
+    document.getElementById('roomMaxPlayers').textContent = data.maxPlayers;
+    document.getElementById('roomPlayerCount').textContent = '1';
+    showToast('Phòng Created: ' + data.roomId + ' | Mã: ' + data.password, 'success');
+    refreshRoom();
+  });
+
+  // ── Joined room ──
+  state.socket.on('joined_room', (data) => {
+    state.roomId = data.roomId;
+    showScreen('screen_room');
+    refreshRoom();
+  });
+
+  // ── Join error ──
+  state.socket.on('join_error', (data) => {
+    showToast(data.message, 'error');
+  });
+
+  // ── Room updated (player list, state, etc.) ──
+  state.socket.on('room_updated', (data) => {
+    if (data.id !== state.roomId) return;
+
+    // Update header
+    document.getElementById('roomPlayerCount').textContent = data.playerCount;
+    document.getElementById('roomMaxPlayers').textContent = data.maxPlayers;
+    document.getElementById('showRoomId').textContent = data.id;
+
+    // Update room title
+    document.getElementById('roomTitle').textContent = data.name || t('lobby_title');
+
+    // Store state
+    state.gameState = data.gameState || 'lobby';
+    state.currentNight = data.currentNight || 0;
+    state.selectedRoleIds = data.selectedRoles || [];
+    state.allAgreed = data.allAgreed || false;
+    state.discordWebhook = data.discordWebhook || '';
+
+    // Update player list
+    if (data.players) {
+      renderPlayerList(data.players, state.socketId, []);
+    }
+
+    // Update role catalog (for host)
+    updateRoleCatalog();
+
+    // Update host controls
+    updateHostControls();
+    updateAgreeStatus();
+
+    // Update start button
+    updateStartButton();
+
+    // Check if all agreed
+    if (data.allAgreed) {
+      document.getElementById('agreeStatus').innerHTML = `
+        <div style="padding:12px; background:rgba(58,154,58,0.1); border:1px solid var(--success); border-radius:var(--radius); text-align:center;">
+          <strong style="color:var(--success);">✓ ${t('agree_all')}</strong>
+        </div>
+      `;
+    } else {
+      const notAgreed = data.players?.filter(p => !p.agreed)?.length || 0;
+      document.getElementById('agreeStatus').innerHTML = `
+        <div style="padding:12px; background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius); text-align:center;">
+          <strong style="color:var(--text-secondary);">${notAgreed > 0 ? notAgreed + ' người chưa đồng ý' : 'Chưa có người chơi'}</strong>
+        </div>
+      `;
+    }
+
+    // Show/hide role panel
+    const myRolePanel = document.getElementById('myRolePanel');
+    if (state.myRole && state.gameState !== 'lobby') {
+      myRolePanel.style.display = 'block';
+    } else {
+      myRolePanel.style.display = 'none';
+    }
+
+    // Update voting panel
+    updateVotingPanel();
+
+    // Update night panel
+    updateNightPanel();
+
+    // Update night results
+    updateNightResults();
+
+    // Update game over
+    updateGameOver();
+  });
+
+  // ── All agreed ──
+  state.socket.on('all_agreed', (data) => {
+    if (data.ready && state.isHost) {
+      document.getElementById('agreeStatus').innerHTML = `
+        <div style="padding:12px; background:rgba(58,154,58,0.15); border:1px solid var(--success); border-radius:var(--radius); text-align:center;">
+          <strong style="color:var(--success);">✓ ${t('agree_all')}</strong>
+        </div>
+      `;
+      updateStartButton();
+    }
+  });
+
+  // ── Role reveal ──
+  state.socket.on('role_reveal', (data) => {
+    state.myRole = data.roleId;
+    state.myTeam = data.team;
+    state.myRealRole = data.realRole || data.roleId;
+
+    // Show role panel
+    updateMyRole();
+
+    // Update game status message
+    document.getElementById('gameStatusMessage').innerHTML = `
+      <strong style="color:var(--accent);">🌙 Đêm ${data.night || 1} — Vai của bạn đã được reveals!</strong>
+    `;
+
+    // Update player list to show roles (only for host? No — reveal to everyone but only show own role)
+    // Actually, in werewolf, only you see your role. The server sends role_reveal only to the individual.
+    // So we don't update the player list here — the player list remains role-hidden.
+
+    // If had night action, show night panel
+    if (data.hasNightAction) {
+      state.myAction = data.action;
+      setTimeout(() => {
+        updateNightPanel();
+        document.getElementById('gameStatusMessage').innerHTML = `
+          <strong style="color:var(--wolf);">🌙 ${t('night_phase')} — Làm hành động của bạn!</strong>
+        `;
+      }, 1500);
+    } else {
+      // No action — host advances to night
+      state.gameState = 'night';
+      document.getElementById('gameStatusMessage').innerHTML = `
+        <strong style="color:var(--text-secondary);">Bạn không có hành động ban đêm. Đang chờ chủ phòng tiếp tục…</strong>
+      `;
+    }
+
+    refreshRoom();
+  });
+
+  // ── Night started ──
+  state.socket.on('night_started', (data) => {
+    state.gameState = 'night';
+    state.currentNight = data.night;
+
+    document.getElementById('gameStatusMessage').innerHTML = `
+      <strong style="color:var(--wolf);">🌙 ${t('night_phase')} ${data.night} — ${data.wolfRevenge ? '🔥 ' + t('wolf_revenge') : ''}</strong>
+    `;
+
+    if (data.wolfRevenge) {
+      showToast(t('wolf_revenge'), 'info');
+    }
+
+    setTimeout(() => {
+      updateNightPanel();
+    }, 500);
+
+    refreshRoom();
+  });
+
+  // ── Night results ──
+  state.socket.on('night_results', (data) => {
+    state.gameState = 'day';
+    state.nightResults = data.results || [];
+    state.eliminatedPlayerNames = data.killed || [];
+    state.wolfRevenge = data.wolfRevenge || false;
+
+    document.getElementById('gameStatusMessage').innerHTML = `
+      <strong style="color:var(--accent);">🌅 ${t('night_results')}</strong>
+    `;
+
+    setTimeout(() => {
+      updateNightResults();
+    }, 300);
+
+    refreshRoom();
+  });
+
+  // ── Day started (auto or manual) ──
+  state.socket.on('day_started', (data) => {
+    state.gameState = 'voting';
+    state.currentNight = data.night;
+    state.alivePlayers = data.playersAlive || [];
+
+    document.getElementById('gameStatusMessage').innerHTML = `
+      <strong style="color:var(--info);">☀️ ${t('day_phase')} ${data.night} — Tranh luận & Bầu!</strong>
+    `;
+
+    setTimeout(() => {
+      updateVotingPanel();
+      startVoteTimer(data.voteTime || 60);
+    }, 300);
+
+    refreshRoom();
+  });
+
+  state.socket.on('day_started_auto', (data) => {
+    state.gameState = 'voting';
+    state.currentNight = data.night;
+    state.alivePlayers = data.playersAlive || [];
+
+    document.getElementById('gameStatusMessage').innerHTML = `
+      <strong style="color:var(--info);">☀️ Ban ngày — Tranh luận & Bầu!</strong>
+    `;
+
+    setTimeout(() => {
+      updateVotingPanel();
+      startVoteTimer(60);
+    }, 300);
+
+    refreshRoom();
+  });
+
+  // ── Voting complete ──
+  state.socket.on('voting_complete', (data) => {
+    state.eliminatedPlayerNames = data.eliminated ? [data.votedOut?.playerName] : [];
+    state.eliminatedPlayerIds = data.eliminated || [];
+
+    document.getElementById('gameStatusMessage').innerHTML = `
+      <strong style="color:var(--danger);">💀 ${data.votedOut?.playerName} (${data.votedOut?.roleName}) đã bị treo! ${data.votedOut?.votes || 0} phiếu.</strong>
+    `;
+
+    showToast(data.votedOut?.playerName + ' bị treo!', 'info');
+
+    setTimeout(() => {
+      if (data.eliminated && data.eliminated.length > 0) {
+        // Refresh player list to show eliminations
+        state.socket.emit('get_room_status'); // request update
+      }
+      updateNightResults();
+    }, 500);
+
+    refreshRoom();
+  });
+
+  // ── Game over ──
+  state.socket.on('game_over', (data) => {
+    state.gameState = 'gameover';
+    state.winTeam = data.winTeam;
+    state.gameOverMessage = data.message;
+    state.eliminatedList = data.eliminated ? data.eliminated : [];
+
+    document.getElementById('gameStatusMessage').innerHTML = `
+      <strong style="color:var(--accent);">🏆 ${data.message}</strong>
+    `;
+
+    setTimeout(() => {
+      updateGameOver();
+    }, 300);
+
+    refreshRoom();
+  });
+
+  // ── Host changed ──
+  state.socket.on('host_changed', (data) => {
+    showToast('Chủ phòng mới đã được chỉ định.', 'info');
+    state.isHost = (data.newHostId === state.socketId);
+    refreshRoom();
+  });
+
+  // ── Room expired ──
+  state.socket.on('room_expired', (data) => {
+    showToast(t('room_expired'), 'error');
+    leaveRoom();
+  });
+
+  // ── Wolf chat ──
+  state.socket.on('wolf_chat', (data) => {
+    const box = document.getElementById('wolfChatMessages');
+    if (box) {
+      const div = document.createElement('div');
+      div.style.cssText = 'padding:4px 0; font-size:0.8rem; color:var(--wolf); border-bottom:1px solid var(--border);';
+      div.textContent = '🐺 [' + (data.night || '?') + '] ' + data.from + ': ' + data.message;
+      box.appendChild(div);
+      box.scrollTop = box.scrollHeight;
+    }
+  });
+
+  // ── Error events ──
+  state.socket.on('start_error', (data) => {
+    showToast(data.message, 'error');
+  });
+
+  state.socket.on('select_roles_error', (data) => {
+    showToast(data.message, 'error');
+  });
+
+  state.socket.on('vote_error', (data) => {
+    showToast(data.message, 'error');
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// VOTE TIMER
+// ═══════════════════════════════════════════════════════════════════════════
+function startVoteTimer(seconds) {
+  const fill = document.getElementById('voteTimerFill');
+  if (!fill) return;
+
+  let remaining = seconds * 1000;
+  const startTime = Date.now();
+
+  function update() {
+    const elapsed = Date.now() - startTime;
+    remaining = Math.max(0, seconds * 1000 - elapsed);
+    const pct = (remaining / (seconds * 1000)) * 100;
+    fill.style.width = pct + '%';
+
+    if (remaining <= 0) {
+      fill.style.width = '0%';
+      // Auto-submit vote if one is selected
+      if (state.selectedVoteTarget) {
+        state.socket.emit('vote', { targetId: state.selectedVoteTarget });
+        showToast('Hết giờ — phiếu bầu tự động được gửi!', 'info');
+      }
+      return;
+    }
+
+    requestAnimationFrame(update);
+  }
+
+  update();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+  initSocket();
+
+  // Enter lobby on Enter key
+  document.getElementById('playerName').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') enterLobby();
+  });
+
+  document.getElementById('joinRoomId').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') joinRoom();
+  });
+
+  // Auto-save player name to localStorage
+  const savedName = localStorage.getItem('werewolf_playerName');
+  if (savedName) {
+    document.getElementById('playerName').value = savedName;
+    state.playerName = savedName;
+  }
+
+  document.getElementById('playerName').addEventListener('change', () => {
+    localStorage.setItem('werewolf_playerName', document.getElementById('playerName').value.trim());
+  });
+
+  // Expose ROLES to client
+  // (In production, this would come from server. For now, we include a minimal version.)
+  window.ROLES = {
+    villager: { id: 'villager', name: 'Làng Dân', team: 'villager', desc: 'Không có năng lực đặc biệt. Thắng khi hết ái nạ ma và vampire.' },
+    seer: { id: 'seer', name: 'Nhà Đoán', team: 'villager', desc: 'Mỗi đêm, xem đội của một người (Làng Dân, Ái Nạ Ma, hay Vampire).' },
+    doctor: { id: 'doctor', name: 'Bác Sĩ', team: 'villager', desc: 'Mỗi đêm, cứu một người khỏi bị tắm (không thể cứu người mesmo 2 đêm liên tiếp).' },
+    hunter: { id: 'hunter', name: 'Hunter', team: 'villager', desc: 'Khi bị treo, có thể bắn một người khác.' },
+    cupid: { id: 'cupid', name: 'Cupid', team: 'villager', desc: 'Mỗi đêm, ghép đôi hai người làm bạn tình. Nếu một chết, người kia cũng chết.' },
+    builder: { id: 'builder', name: 'Xây Dựng', team: 'villager', desc: 'Mỗi đêm, xem vai chính xác của một người (không chỉ đội).' },
+    prophet: { id: 'prophet', name: 'Tiên Đ 예견', team: 'villager', desc: 'Mỗi đêm, xem tất cả người trong một đội (Làng Dân, Ái Nạ Ma, hay Vampire).' },
+    veteran: { id: 'veteran', name: 'Cựu Chiến Binh', team: 'villager', desc: 'Không thể bị tắm đêm đầu tiên.' },
+    werewolf: { id: 'werewolf', name: 'Ái Nạ Ma', team: 'werewolf', desc: 'Mỗi đêm, tắm một người. Thắng khi số ái nạ ma + vampire ≥ số làng dân.', isWolf: true },
+    wolf_alpha: { id: 'wolf_alpha', name: 'Ái Nạ Vua', team: 'werewolf', desc: 'Sống mãi, có thể tắm 2 người mỗi đêm.', isWolf: true },
+    baby_wolf: { id: 'baby_wolf', name: 'Sói Con', team: 'werewolf', desc: 'Nếu bị treo, đàn sói giận dữ. Đêm sau, ái nạ có thể tắm 2 người.', isWolf: true, revengeKill: true },
+    bigfoot: { id: 'bigfoot', name: 'Bigfoot', team: 'werewolf', desc: 'Đêm thứ 2, chọn.join Làng Dân hoặc Ái Nạ Ma.', isWolf: true, switchesTeam: true },
+    vampire: { id: 'vampire', name: 'Vampire', team: 'vampire', desc: 'Mỗi đêm, tắm một người. Thắng khi hết người chơi sót.', isVampire: true },
+    doppelganger: { id: 'doppelganger', name: 'Đậm Genre', team: 'neutral', desc: 'Mỗi đêm, copy vai của một người. Nếu người đó chết, bạn có vai của họ.' },
+    drunk: { id: 'drunk', name: 'Người Say', team: 'neutral', desc: 'Có vai bí ẩn mỗi đêm nhưng không biết. Vai thực tế là Làng Dân.' },
+    troublemaker: { id: 'troublemaker', name: 'Troublemaker', team: 'neutral', desc: 'Mỗi đêm, đổi vai của hai người.' },
+    shaman: { id: 'shaman', name: 'Shaman', team: 'neutral', desc: 'Mỗi đêm, chọn một vai để tặng cho một người khác.' },
+    sorcerer: { id: 'sorcerer', name: 'Tà Ái Nạ', team: 'neutral', desc: 'Có thể chat với ái nạ đêm nhưng không phải ái nạ. Thắng với Làng Dân.', canTalkToWolves: true },
+    robber: { id: 'robber', name: 'Cướp', team: 'neutral', desc: 'Mỗi đêm, ăn trộm vai của một người và cho họ vai của bạn.' },
+    huntress: { id: 'huntress', name: 'Thợ Săn', team: 'neutral', desc: 'Mỗi đêm, tắm một người. Thắng nếu sót đến cuối.' },
+    jester: { id: 'jester', name: 'Công Chúa', team: 'neutral', desc: 'Thắng nếu bị treo trong ban ngày.' },
+    peace_lover: { id: 'peace_lover', name: 'Người Yêu Hòa Bình', team: 'neutral', desc: 'Không bao giờ được bầu treo ai. Attempted vote is disqualified.', cannotVote: true },
+    retarded: { id: 'retarded', name: 'Kẻ Điên', team: 'neutral', desc: 'Thắng nếu bị treo bởi làng dân.' },
+    mafioso: { id: 'mafioso', name: 'Mafioso', team: 'neutral', desc: 'Biết ai là ái nạ. Có thể chat với ái nạ. Thắng cùng ái nạ.', knowsWolves: true, winsWithWolves: true },
+    mutant: { id: 'mutant', name: 'Mutant', team: 'neutral', desc: 'Ái nạ không thể tắm bạn. Thắng nếu sót đến cuối.', immuneToWolf: true },
+    witch: { id: 'witch', name: 'Phù Tắc', team: 'neutral', desc: 'Mỗi đêm, chọn cứu (bảo vệ một người) hoặc giết (tắm một người). Mỗi năng lực chỉ dùng 1 lần.', action: 'witch_action' },
+  };
+});
+
+// Make functions globally accessible
+function updateHostControls() {
+  const area = document.getElementById('hostControlsArea');
+  if (!area) return;
+  if (!state.isHost) { area.style.display = 'none'; return; }
+
+  const gs = state.gameState;
+  let html = '';
+
+  if (gs === 'lobby') {
+    // Already handled by updateStartButton()
+    area.style.display = 'none';
+    return;
+  }
+
+  if (gs === 'role_reveal') {
+    html = `<button class="btn btn-primary btn-sm" onclick="advanceToNight()">🌙 Tiến đến ban đêm</button>`;
+  } else if (gs === 'night') {
+    html = `<button class="btn btn-primary btn-sm" onclick="advanceToVoting()">☀️ Tiến đến bầu (day)</button>`;
+  } else if (gs === 'voting') {
+    html = '';
+    // End voting is triggered by server when all votes in, or host can force end
+  } else if (gs === 'day') {
+    // After voting complete, host clicks to next round
+    html = `<button class="btn btn-primary btn-sm" onclick="nextRound()">🔄 Tiến vòng tiếp theo</button>`;
+  } else if (gs === 'gameover') {
+    html = `<button class="btn btn-primary btn-sm" onclick="resetToHome()">🔄 Chơi lại</button>`;
+  }
+
+  area.innerHTML = html;
+  area.style.display = html ? 'block' : 'none';
+}
+
+function advanceToNight() {
+  state.socket.emit('advance_to_night');
+}
+
+function nextRound() {
+  state.socket.emit('next_round');
+}
+
+window.enterLobby = enterLobby;
+window.switchTab = switchTab;
+window.createRoom = createRoom;
+window.joinRoom = joinRoom;
+window.leaveRoom = leaveRoom;
+window.switchRoomTab = switchRoomTab;
+window.toggleLanguage = toggleLanguage;
+window.agreeToRoles = agreeToRoles;
+window.startGame = startGame;
+window.confirmRoles = confirmRoles;
+window.selectVote = selectVote;
+window.submitVote = submitVote;
+window.advanceToVoting = advanceToVoting;
+window.nextRound = nextRound;
+window.advanceToNight = advanceToNight;
+window.resetToHome = resetToHome;
+window.sendWolfChat = sendWolfChat;
+window.selectNightTarget = selectNightTarget;
+window.submitNightAction = submitNightAction;
+window.selectNightTeam = selectNightTeam;
+window.selectNightSide = selectNightSide;
+window.selectWitchAction = selectWitchAction;
+window.selectShamanRole = selectShamanRole;
+
+function resetToHome() {
+  leaveRoom();
+}
+
+// Fix: also need to capture socket ID
+state.socketId = null;
+const origConnect = state.socket.on;
+state.socket.on('connect', () => {
+  state.socketId = state.socket.id;
+});
+
+// Override initSocket to capture socket ID properly
+const origInit = initSocket;
+// We'll set socketId after connection
+state.socket.on('connect', () => {
+  state.socketId = state.socket.id;
+  console.log('Socket ID:', state.socketId);
+});
+</script>
+
+</body>
+</html>
