@@ -303,6 +303,45 @@ h3 {
 .role-card.vampire { border-left: 3px solid var(--vampire); }
 .role-card.neutral { border-left: 3px solid var(--neutral); }
 
+/* ═══════════════════════════════════════════════════════════════
+   ACTIVE ROOM CARD (for join tab room list)
+   ═══════════════════════════════════════════════════════════════ */
+.room-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  margin-bottom: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.room-card:hover {
+  border-color: var(--border-glow);
+  box-shadow: 0 0 12px rgba(196,164,90,0.2);
+  transform: translateY(-1px);
+}
+
+.room-card.locked {
+  border-color: #d4a030;
+  background: rgba(212,160,48,0.05);
+}
+
+.room-card.game-in-progress {
+  border-color: var(--danger);
+  background: rgba(196,58,58,0.05);
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.room-card.game-in-progress:hover {
+  border-color: var(--danger);
+  box-shadow: 0 0 8px rgba(196,58,58,0.3);
+  transform: none;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ROLE ICON
+   ═══════════════════════════════════════════════════════════════ */
 .role-icon {
   width: 44px;
   height: 44px;
@@ -764,6 +803,52 @@ body.no-scroll { overflow: hidden; }
   margin: 16px 0;
   opacity: 0.3;
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   MODAL (password modal, etc.)
+   ═══════════════════════════════════════════════════════════════ */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  backdrop-filter: blur(4px);
+  animation: fadeIn 0.2s ease;
+}
+
+.modal-box {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  width: 90%;
+  max-width: 320px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  animation: fadeIn 0.2s ease;
+}
+
+.modal-box h3 {
+  margin-top: 0;
+}
+
+.modal-box .input-group label {
+  font-size: 0.85rem;
+}
+
+.modal-box .input {
+  font-size: 1.2rem;
+  text-align: center;
+  letter-spacing: 8px;
+  padding: 14px;
+}
+
+.modal-box .btn {
+  padding: 12px;
+  font-size: 0.95rem;
+}
 </style>
 </head>
 <body>
@@ -884,6 +969,53 @@ body.no-scroll { overflow: hidden; }
         <div class="loading-spinner" style="width:24px; height:24px; margin:0 auto 8px;"></div>
         Đang tải danh sách phòng…
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     PASSWORD MODAL (for joining password-protected rooms)
+     ═══════════════════════════════════════════════════════════════ -->
+<div id="passwordModal" class="modal-overlay" style="display:none;">
+  <div class="modal-box">
+    <h3 style="margin-bottom:8px;">🔐 Mật khẩu phòng</h3>
+    <p id="modalRoomName" style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:12px;"></p>
+    <div class="input-group">
+      <label for="inputRoomPassword">Mã 6 chữ số:</label>
+      <input class="input" id="inputRoomPassword" type="password" placeholder="Nhập mã phòng 6 chữ số" maxlength="6" inputmode="numeric">
+    </div>
+    <p id="passwordError" style="font-size:0.8rem; color:var(--danger); margin-bottom:12px; min-height:18px;"></p>
+    <div style="display:flex; gap:8px;">
+      <button class="btn btn-secondary" style="flex:1;" onclick="hidePasswordModal()">Hủy</button>
+      <button class="btn btn-primary" style="flex:1;" onclick="confirmPasswordJoin()">Vào phòng</button>
+    </div>
+  </div>
+</div>
+
+<!-- Leave confirmation modal -->
+<div id="leaveConfirmModal" class="modal-overlay" style="display:none;">
+  <div class="modal-box">
+    <h3 style="margin-bottom:8px;">🚪 Rời phòng?</h3>
+    <p style="font-size:0.9rem; color:var(--text-secondary); margin-bottom:16px;">
+      Bạn có chắc chắn muốn rời phòng? Vai trò đã chọn sẽ bị mất.
+    </p>
+    <div style="display:flex; gap:8px;">
+      <button class="btn btn-secondary" style="flex:1;" onclick="cancelLeave()">Không, ở lại</button>
+      <button class="btn btn-danger" style="flex:1;" onclick="confirmLeave()">Có, rời phòng</button>
+    </div>
+  </div>
+</div>
+
+<!-- Leave confirmation modal -->
+<div id="leaveConfirmModal" class="modal-overlay" style="display:none;">
+  <div class="modal-box">
+    <h3 style="margin-bottom:8px;">🚪 Rời phòng?</h3>
+    <p style="font-size:0.9rem; color:var(--text-secondary); margin-bottom:16px;">
+      Bạn có chắc chắn muốn rời phòng? Vai trò đã chọn sẽ bị mất.
+    </p>
+    <div style="display:flex; gap:8px;">
+      <button class="btn btn-secondary" style="flex:1;" onclick="cancelLeave()">Không, ở lại</button>
+      <button class="btn btn-danger" style="flex:1;" onclick="confirmLeave()">Có, rời phòng</button>
     </div>
   </div>
 </div>
@@ -1197,7 +1329,12 @@ function t(key) {
       room_expired: 'Phòng hết giờ chờ (20 phút không hoạt động).',
       toast_waiting: 'Đang chờ…',
       toast_agreed: 'Bạn đã đồng ý!',
+      toast_disagreed: 'Bạn đã hủy đồng ý!',
       toast_roles_confirmed: 'Vai đã được xác nhận.',
+      leave_confirm_title: 'Rời phòng?',
+      leave_confirm_message: 'Bạn có chắc chắn muốn rời phòng? Vai trò đã chọn sẽ bị mất.',
+      button_leave_yes: 'Có, rời phòng',
+      button_leave_no: 'Không, ở lại',
     },
     en: {
       home_title: 'WEREWOLF',
@@ -1273,7 +1410,12 @@ function t(key) {
       room_expired: 'Room expired (20 minutes of inactivity).',
       toast_waiting: 'Waiting…',
       toast_agreed: 'You agreed!',
+      toast_disagreed: 'You disagreed!',
       toast_roles_confirmed: 'Roles confirmed.',
+      leave_confirm_title: 'Leave room?',
+      leave_confirm_message: 'Are you sure you want to leave? Your selected roles will be lost.',
+      button_leave_yes: 'Yes, leave',
+      button_leave_no: 'No, stay',
     }
   };
   return dict[state.language][key] || dict.vi[key] || key;
@@ -1328,6 +1470,10 @@ function switchTab(tab) {
   } else {
     document.getElementById('tab_join').style.display = 'block';
     document.querySelectorAll('.tab')[1].classList.add('active');
+    // Load active rooms when switching to join tab
+    if (state.socket && state.socket.connected) {
+      state.socket.emit('get_active_rooms');
+    }
   }
 }
 
@@ -1387,8 +1533,9 @@ function renderActiveRooms(rooms) {
   for (const room of rooms) {
     const lockIcon = room.hasPassword ? '🔒' : '🔓';
     const fullLabel = room.isFull ? ' (đầy)' : '';
+    const gameInProgress = room.gameState && room.gameState !== 'lobby' && room.gameState !== 'gameover';
     html += `
-      <div class="room-card" onclick="joinRoomById('${room.roomId}')">
+      <div class="room-card${room.hasPassword ? ' locked' : ''}${gameInProgress ? ' game-in-progress' : ''}" onclick="joinRoomById('${room.id}')">
         <div style="display:flex; align-items:center; gap:10px; padding:12px; background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-sm); margin-bottom:6px; cursor:pointer;">
           <div style="font-size:1.2rem;">${lockIcon}</div>
           <div style="flex:1;">
@@ -1396,6 +1543,7 @@ function renderActiveRooms(rooms) {
             <div style="font-size:0.75rem; color:var(--text-muted);">
               ${room.playerCount}/${room.maxPlayers} người${fullLabel}
             </div>
+            ${gameInProgress ? `<div style="font-size:0.7rem; color:var(--danger); margin-top:2px;">● Trò chơi đang diễn ra — không thể tham gia</div>` : ''}
           </div>
           <div style="color:var(--accent); font-size:0.85rem;">✅ Vào</div>
         </div>
@@ -1406,16 +1554,71 @@ function renderActiveRooms(rooms) {
 }
 
 function joinRoomById(roomId) {
+  // Check if room is in progress before attempting to join
+  const rooms = state.activeRooms || [];
+  const room = rooms.find(r => r.id === roomId);
+  if (room && room.gameState && room.gameState !== 'lobby' && room.gameState !== 'gameover') {
+    showToast('Trò chơi đang diễn ra, không thể tham gia giữa chừng.', 'error');
+    return;
+  }
   state.socket.emit('join_by_id', { roomId, playerName: state.playerName });
 }
 
-// Handle password prompt from server
+// Handle password prompt from server — shows custom modal
 function handleJoinPasswordRequired(data) {
-  const password = prompt(`Phòng "${data.roomName}" có mật khẩu. Vui lòng nhập mã 6 chữ số:`);
-  if (password) {
-    state.socket.emit('join_by_id', { roomId: data.roomId, password: password.trim(), playerName: state.playerName });
+  state.pendingRoomId = data.roomId;
+  const modal = document.getElementById('passwordModal');
+  if (modal) {
+    document.getElementById('modalRoomName').textContent = data.roomName || 'Phòng';
+    document.getElementById('passwordError').textContent = '';
+    document.getElementById('inputRoomPassword').value = '';
+    modal.style.display = 'flex';
+    setTimeout(() => document.getElementById('inputRoomPassword').focus(), 100);
+  } else {
+    // Fallback to native prompt if modal not found
+    const password = prompt(`Phòng "${data.roomName}" có mật khẩu. Vui lòng nhập mã 6 chữ số:`);
+    if (password) {
+      state.socket.emit('join_by_id', { roomId: data.roomId, password: password.trim(), playerName: state.playerName });
+    }
   }
 }
+
+// Hide password modal and clear pending room
+function hidePasswordModal() {
+  const modal = document.getElementById('passwordModal');
+  if (modal) modal.style.display = 'none';
+  state.pendingRoomId = null;
+}
+
+// Confirm password and join room
+function confirmPasswordJoin() {
+  const password = document.getElementById('inputRoomPassword').value.trim();
+  const errorEl = document.getElementById('passwordError');
+  
+  if (!password || password.length !== 6 || !/^\d{6}$/.test(password)) {
+    errorEl.textContent = 'Vui lòng nhập mã 6 chữ số!';
+    return;
+  }
+  
+  const roomId = state.pendingRoomId;
+  if (!roomId) return;
+  
+  errorEl.textContent = '';
+  state.socket.emit('join_by_id', { roomId, password, playerName: state.playerName });
+}
+
+// Allow Enter key to confirm password
+document.addEventListener('DOMContentLoaded', () => {
+  const pwInput = document.getElementById('inputRoomPassword');
+  if (pwInput) {
+    pwInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        confirmPasswordJoin();
+      }
+    });
+  }
+});
 
 // ═══════════════════════════════════════════════════════════════════════════
 // ROOM
@@ -1428,9 +1631,19 @@ function enterRoom(data) {
 
 function leaveRoom() {
   if (state.socket) {
-    state.socket.emit('leave_room');
-    state.socket.disconnect();
+    // Show custom confirmation modal
+    const modal = document.getElementById('leaveConfirmModal');
+    if (modal) {
+      modal.style.display = 'flex';
+    }
+    return;
   }
+  // If no modal (fallback), use native confirm
+  if (!confirm('Bạn có chắc chắn muốn rời phòng?')) {
+    return;
+  }
+  state.socket.emit('leave_room');
+  state.socket.disconnect();
   // Reset state
   state.roomId = null;
   state.isHost = false;
@@ -1445,6 +1658,34 @@ function leaveRoom() {
   document.getElementById('votingPanel').style.display = 'none';
   document.getElementById('nightResultsPanel').style.display = 'none';
   document.getElementById('gameOverPanel').style.display = 'none';
+  showScreen('screen_home');
+}
+
+function cancelLeave() {
+  const modal = document.getElementById('leaveConfirmModal');
+  if (modal) modal.style.display = 'none';
+}
+
+function confirmLeave() {
+  const modal = document.getElementById('leaveConfirmModal');
+  if (modal) modal.style.display = 'none';
+  if (state.socket) {
+    state.socket.emit('leave_room');
+  }
+  // Reset state
+  state.roomId = null;
+  state.isHost = false;
+  state.myRole = null;
+  state.myTeam = null;
+  state.myRealRole = null;
+  state.nightActionDone = false;
+  state.selectedVoteTarget = null;
+  // Clear panels
+  const panels = ['myRolePanel', 'nightPanel', 'votingPanel', 'nightResultsPanel', 'gameOverPanel'];
+  for (const id of panels) {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  }
   showScreen('screen_home');
 }
 
@@ -1665,8 +1906,12 @@ function updateStartButton() {
 }
 
 function agreeToRoles() {
-  state.socket.emit('agree_roles');
-  showToast(t('toast_agreed'), 'success');
+  // Toggle agree state and send to server
+  state.socket.emit('agree_roles', { agreed: !state.myAgreed });
+  state.myAgreed = !state.myAgreed;
+  showToast(state.myAgreed ? t('toast_agreed') : t('toast_disagreed') || 'Đã hủy đồng ý', 'success');
+  // Refresh UI to update agree button/badge
+  refreshRoom();
 }
 
 function startGame() {
@@ -2228,6 +2473,7 @@ function initSocket() {
   state.socket.on('room_created', (data) => {
     state.roomId = data.roomId;
     state.isHost = true;
+    state.gameState = 'lobby';
     showScreen('screen_room');
     document.getElementById('roomTitle').textContent = data.roomName;
     document.getElementById('showRoomId').textContent = data.roomId;
@@ -2237,8 +2483,21 @@ function initSocket() {
     refreshRoom();
   });
 
+  // ── Active rooms list (server sends raw array) ──
+  state.socket.on('active_rooms', (data) => {
+    const rooms = Array.isArray(data) ? data : (data.rooms || []);
+    state.activeRooms = rooms;
+    renderActiveRooms(rooms);
+  });
+
   // ── Joined room ──
   state.socket.on('joined_room', (data) => {
+    // Hide password modal if it's open
+    const modal = document.getElementById('passwordModal');
+    if (modal && modal.style.display === 'flex') {
+      modal.style.display = 'none';
+      state.pendingRoomId = null;
+    }
     state.roomId = data.roomId;
     showScreen('screen_room');
     refreshRoom();
@@ -2246,6 +2505,17 @@ function initSocket() {
 
   // ── Join error ──
   state.socket.on('join_error', (data) => {
+    // If password modal is open, show error there instead of toast
+    const modal = document.getElementById('passwordModal');
+    if (modal && modal.style.display === 'flex') {
+      const errorEl = document.getElementById('passwordError');
+      if (errorEl) {
+        errorEl.textContent = data.message || 'Mật khẩu không đúng!';
+        document.getElementById('inputRoomPassword').value = '';
+        setTimeout(() => document.getElementById('inputRoomPassword').focus(), 100);
+        return;
+      }
+    }
     showToast(data.message, 'error');
   });
 
@@ -2268,8 +2538,9 @@ function initSocket() {
     state.allAgreed = data.allAgreed || false;
     state.discordWebhook = data.discordWebhook || '';
 
-    // Update player list
+    // Set isHost from player list (for room creator)
     if (data.players) {
+      state.isHost = data.players.some(p => p.isHost);
       renderPlayerList(data.players, state.socketId, []);
     }
 
